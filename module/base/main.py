@@ -1,30 +1,4 @@
 #%%
-"""
-Title: Object Detection with RetinaNet
-Author: [Srihari Humbarwadi](https://twitter.com/srihari_rh)
-Date created: 2020/05/17
-Last modified: 2020/07/14
-Description: Implementing RetinaNet: Focal Loss for Dense Object Detection.
-Modified version
-"""
-
-"""
-## Introduction
-Object detection a very important problem in computer
-vision. Here the model is tasked with localizing the objects present in an
-image, and at the same time, classifying them into different categories.
-Object detection models can be broadly classified into "single-stage" and
-"two-stage" detectors. Two-stage detectors are often more accurate but at the
-cost of being slower. Here in this example, we will implement RetinaNet,
-a popular single-stage detector, which is accurate and runs fast.
-RetinaNet uses a feature pyramid network to efficiently detect objects at
-multiple scales and introduces a new loss, the Focal loss function, to alleviate
-the problem of the extreme foreground-background class imbalance.
-**References:**
-- [RetinaNet Paper](https://arxiv.org/abs/1708.02002)
-- [Feature Pyramid Network Paper](https://arxiv.org/abs/1612.03144)
-"""
-#%%
 import os
 # os.chdir('/Users/anseunghwan/Documents/GitHub/archive/retinanet')
 # os.chdir(r'D:\archive\retinanet')
@@ -89,48 +63,6 @@ class_dict = {
 }
 class_dict = {x:y-1 for x,y in class_dict.items()}
 classnum_dict = {y:x for x,y in class_dict.items()}
-#%%
-# '''dataset'''
-# train_dataset, val_dataset, test_dataset, ds_info = fetch_dataset(batch_size)
-# train_dataset = train_dataset.concatenate(val_dataset)
-
-# log_path = f'logs/voc2007'
-
-# """
-# visualization
-# """
-# image, bbox, label = next(iter(train_dataset))
-# image = np.array(image[0], dtype=np.uint8)
-# bbox = bbox[0].numpy()
-# label = label[0].numpy()
-# img_height, img_width, _ = image.shape
-
-# plt.figure(figsize=(7, 7))
-# # plt.axis("off")
-# plt.imshow(image)
-# ax = plt.gca()
-# for box, _cls in zip(bbox, label):
-#     text = "{}".format(classnum_dict.get(_cls))
-#     x, y, w, h = box.tolist()
-#     # y_min, x_min = round(y_min * img_height), round(x_min * img_width)
-#     # y_max, x_max = round(y_max * img_height), round(x_max * img_width)
-#     patch = plt.Rectangle(
-#         [x - w/2, y - h/2], w, h, fill=False, edgecolor='red', linewidth=2
-#     )
-#     ax.add_patch(patch)
-#     ax.text(
-#         x - w/2,
-#         y - h/2,
-#         text,
-#         bbox={"facecolor": 'blue', "alpha": 0.4},
-#         clip_box=ax.clipbox,
-#         clip_on=True,
-#     )
-# plt.show()
-#%%
-"""
-## Implementing a custom layer to decode predictions
-"""
 
 class DecodePredictions(tf.keras.layers.Layer):
     """A Keras layer that decodes predictions of the RetinaNet model.
