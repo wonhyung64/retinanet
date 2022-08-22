@@ -1,14 +1,20 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Conv2D, TimeDistributed, Dense, Flatten, Dropout
-from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.applications.vgg19 import VGG19
+from tensorflow.keras.layers import (
+    Conv2D,
+    UpSampling2D,
+    TimeDistributed,
+    Dense,
+    Flatten,
+    Dropout,
+) 
+from tensorflow.keras.applications import ResNet50
 from typing import Dict, List
 from .bbox_utils import delta_to_bbox
 
 
 class RPN(Model):
-    def __init__(self, args) -> None:
+    def __init__(self, args, total_labels) -> None:
         """
         parameters
 
@@ -18,21 +24,29 @@ class RPN(Model):
         super(RPN, self).__init__()
         self.args = args
         self.shape = args.img_size + [3]
-        self.anchor_counts = len(self.args.anchor_ratios) * len(self.args.anchor_scales)
-        if args.base_model == "vgg16":
-            self.base_model = VGG16(
-                include_top=False,
-                input_shape=self.shape,
-            )
-        elif args.base_model == "vgg19":
-            self.base_model = VGG19(
-                include_top=False,
-                input_shape=self.shape,
-            )
-        self.layer = self.base_model.get_layer("block5_conv3").output
+        self.prob_init = args.prob_init
+        self.total_labels = total_labels
 
-        self.feature_extractor = Model(inputs=self.base_model.input, outputs=self.layer)
+        self.base_model = ResNet50(
+            include_top=False,
+            input_shape=self.shape,
+        )
+        self.layers = [
+            self.base_model.get_layer(layer).output
+            for layer in ["conv3_block4_out", "conv4_block6_out", "conv5_block3_out"]
+            ]
+        self.feature_extractor = Model(inputs=self.base_model.input, outputs=self.layers)
         self.feature_extractor.trainable = False
+
+        self.conv_c3_1 = Conv2D(256, 1, 1, "same")
+        self.conv_c4_1 = Conv2D(256, 1, 1, "same")
+        self.conv_c5_1 = Conv2D(256, 1, 1, "same")
+        self.conv_c3_3 = Conv2D(256, 3, 1, "same")
+        self.conv_c4_3 = Conv2D(256, 3, 1, "same")
+        self.conv_c5_3 = Conv2D(256, 3, 1, "same")
+        self.conv_c6_3 = Conv2D(256, 3, 2, "same")
+        self.conv_c7_3 = Conv2D(256, 3, 2, "same")
+        self.upsample = UpSampling2D(2)
 
         self.conv = Conv2D(
             filters=512,

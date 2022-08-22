@@ -138,11 +138,6 @@ def prepare_image(image):
     image = tf.keras.applications.resnet.preprocess_input(image)
     return tf.expand_dims(image, axis=0), ratio
 #%%
-'''dataset'''
-train_dataset, val_dataset, test_dataset, ds_info = fetch_dataset(PARAMS['batch_size'])
-train_dataset = train_dataset.concatenate(val_dataset)
-
-log_path = f'logs/voc2007'
 
 """
 ## Initializing and compiling model
