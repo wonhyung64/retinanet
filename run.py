@@ -28,4 +28,3 @@ if __name__ == "__main__":
     train_set, valid_set, test_set = build_dataset(
         datasets, args.batch_size, args.img_size
     )
-    
