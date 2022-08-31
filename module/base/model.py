@@ -83,8 +83,9 @@ def build_head(output_filters, bias_init):
         A keras sequential model representing either the classification
         or the box regression head depending on `output_filters`.
     """
-    head = K.Sequential([K.Input(shape=[None, None, 256])])
     kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
+    head = K.Sequential([])
+    head.add(K.Input(shape=[None, None, 256]))
     for _ in range(4):
         head.add(
             K.layers.Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
