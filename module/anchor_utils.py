@@ -3,22 +3,21 @@ import tensorflow as tf
 
 class AnchorBox:
     """Generates anchor boxes.
+
     This class has operations to generate anchor boxes for feature maps at
     strides `[8, 16, 32, 64, 128]`. Where each anchor each box is of the
     format `[x, y, width, height]`.
+
     Attributes:
-    aspect_ratios: A list of float values representing the aspect ratios of the anchor boxes at each location on the feature map
-    (anchor box의 가로 세로 길이에 대한 scaling)
-    
-    scales: A list of float values representing the scale of the anchor boxes at each location on the feature map.
-    (anchor box의 크기에 대한 종류 - scaling)
-    
-    num_anchors: The number of anchor boxes at each location on feature map
-    
-    areas: A list of float values representing the areas of the anchor boxes for each feature map in the feature pyramid. 
-    (anchor box가 image에서 차지하는 넓이)
-    
-    strides: A list of float value representing the strides for each feature map in the feature pyramid.
+      aspect_ratios: A list of float values representing the aspect ratios of
+        the anchor boxes at each location on the feature map
+      scales: A list of float values representing the scale of the anchor boxes
+        at each location on the feature map.
+      num_anchors: The number of anchor boxes at each location on feature map
+      areas: A list of float values representing the areas of the anchor
+        boxes for each feature map in the feature pyramid.
+      strides: A list of float value representing the strides for each feature
+        map in the feature pyramid.
     """
 
     def __init__(self):
@@ -50,12 +49,16 @@ class AnchorBox:
 
     def _get_anchors(self, feature_height, feature_width, level):
         """Generates anchor boxes for a given feature map size and level
+
         Arguments:
-            feature_height: An integer representing the height of the feature map.
-            feature_width: An integer representing the width of the feature map.
-            level: An integer representing the level of the feature map in the feature pyramid.
+          feature_height: An integer representing the height of the feature map.
+          feature_width: An integer representing the width of the feature map.
+          level: An integer representing the level of the feature map in the
+            feature pyramid.
+
         Returns:
-            anchor boxes with the shape `(feature_height * feature_width * num_anchors, 4)`
+          anchor boxes with the shape
+          `(feature_height * feature_width * num_anchors, 4)`
         """
         rx = tf.range(feature_width, dtype=tf.float32) + 0.5
         ry = tf.range(feature_height, dtype=tf.float32) + 0.5
@@ -72,16 +75,19 @@ class AnchorBox:
 
     def get_anchors(self, image_height, image_width):
         """Generates anchor boxes for all the feature maps of the feature pyramid.
+
         Arguments:
-            image_height: Height of the input image.
-            image_width: Width of the input image.
+          image_height: Height of the input image.
+          image_width: Width of the input image.
+
         Returns:
-            anchor boxes for all the feature maps, stacked as a single tensor with shape `(total_anchors, 4)`
+          anchor boxes for all the feature maps, stacked as a single tensor
+            with shape `(total_anchors, 4)`
         """
         anchors = [
             self._get_anchors(
-                tf.math.ceil(image_height / (2 ** i)),
-                tf.math.ceil(image_width / (2 ** i)),
+                tf.math.ceil(image_height / 2 ** i),
+                tf.math.ceil(image_width / 2 ** i),
                 i,
             )
             for i in range(3, 8)

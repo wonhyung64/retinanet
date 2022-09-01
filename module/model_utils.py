@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.applications import ResNet50
@@ -8,7 +9,8 @@ from tensorflow.keras.layers import (
     Input,
 ) 
 from typing import List
-
+from .anchor_utils import AnchorBox
+from .box_utils import convert_to_corners
 
 class FeatureExtractor(Model):
     def __init__(self, args) -> None:
@@ -60,7 +62,7 @@ class RetinaNet(Model):
         self.total_labels = total_labels
         self.batch_size = args.batch_size
         self.anchor_counts = len(args.anchor_ratios) * len(args.anchor_scales)
-        self.prior_prob = tf.constant_initializer(-tf.math.log((1 - args.prob_init) / args.prob_init))
+        self.prior_prob = tf.constant_initializer(-np.log((1 - args.prob_init) / args.prob_init))
         self.kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
 
         self.head = tf.keras.Sequential([])
@@ -98,13 +100,66 @@ class RetinaNet(Model):
         for feature_map in feature_maps:
             reg_outputs.append(tf.reshape(self.reg(feature_map), [self.batch_size, -1, 4]))
             cls_outputs.append(tf.reshape(self.cls(feature_map), [self.batch_size, -1, self.total_labels]))
+        reg_outputs = tf.concat(reg_outputs, axis=1)
+        cls_outputs = tf.concat(cls_outputs, axis=1)
 
-        fc1 = self.FC1(inputs)
-        fc2 = self.FC2(fc1)
-        fc3 = self.FC3(fc2)
-        fc4 = self.FC4(fc3)
-        fc5 = self.FC5(fc4)
-        dtn_reg_output = self.reg(fc5)
-        dtn_cls_output = self.cls(fc5)
+        return reg_outputs, cls_outputs
 
-        return [dtn_reg_output, dtn_cls_output]
+
+def build_model(args, total_labels):
+    model = RetinaNet(args, total_labels=total_labels)
+    input_shape = [None] + args.img_size + [3]
+    model.build(input_shape=input_shape)
+
+    return model
+
+
+class Decoder(tf.keras.layers.Layer):
+    def __init__(
+        self,
+        args,
+        total_labels,
+        max_total_size=200,
+        score_threshold=0.5,
+        iou_threshold=0.5,
+        **kwargs
+    ):
+        super(Decoder, self).__init__(**kwargs)
+        self.total_labels = total_labels
+        self.max_total_size = max_total_size
+        self.score_threshold = score_threshold
+        self.iou_threshold = iou_threshold
+        self._anchor_box = AnchorBox()
+        self.variances = tf.convert_to_tensor(args.variances, dtype=tf.float32)
+        self.img_size = args.img_size
+
+
+    def _decode_box_predictions(self, anchor_boxes, box_predictions):
+        boxes = box_predictions * self.variances
+        boxes = tf.concat(
+            [
+                boxes[:, :, :2] * anchor_boxes[:, :, 2:] + anchor_boxes[:, :, :2],
+                tf.math.exp(boxes[:, :, 2:]) * anchor_boxes[:, :, 2:],
+            ],
+            axis=-1,
+        )
+        boxes_transformed = convert_to_corners(boxes)
+
+        return boxes_transformed
+
+
+    @tf.function
+    def call(self, box_pred, cls_pred):
+        anchor_boxes = self._anchor_box.get_anchors(self.img_size[0], self.img_size[1])
+        cls_predictions = tf.nn.sigmoid(cls_pred)
+        boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_pred)
+
+        return tf.image.combined_non_max_suppression(
+            tf.expand_dims(boxes, axis=2),
+            cls_predictions,
+            self.max_total_size,
+            self.max_total_size,
+            self.iou_threshold,
+            self.score_threshold,
+            clip_boxes=False,
+        )
