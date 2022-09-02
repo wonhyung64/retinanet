@@ -21,11 +21,9 @@ def plugin_neptune(NEPTUNE_API_KEY, NEPTUNE_PROJECT, args):
     return run
 
 
-def record_train_loss(run, loss_rpn, loss_dtn, total_loss):
-    run["train/loss/rpn_reg_loss"].log(loss_rpn[0].numpy())
-    run["train/loss/rpn_cls_loss"].log(loss_rpn[1].numpy())
-    run["train/loss/dtn_reg_loss"].log(loss_dtn[0].numpy())
-    run["train/loss/dtn_cls_loss"].log(loss_dtn[1].numpy())
+def record_train_loss(run, reg_loss, cls_loss, total_loss):
+    run["train/loss/reg_loss"].log(reg_loss.numpy())
+    run["train/loss/cls_loss"].log(cls_loss.numpy())
     run["train/loss/total_loss"].log(total_loss.numpy())
 
 

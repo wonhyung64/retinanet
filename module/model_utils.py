@@ -61,7 +61,7 @@ class RetinaNet(Model):
         self.feature_extractor = FeatureExtractor(args)
         self.total_labels = total_labels
         self.batch_size = args.batch_size
-        self.anchor_counts = len(args.anchor_ratios) * len(args.anchor_scales)
+        self.anchor_counts = 9
         self.prior_prob = tf.constant_initializer(-np.log((1 - args.prob_init) / args.prob_init))
         self.kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
 
@@ -94,12 +94,16 @@ class RetinaNet(Model):
 
 
     @tf.function
-    def call(self, inputs: tf.Tensor) -> List:
+    def call(self, inputs: tf.Tensor, batch_size=None) -> List:
         feature_maps = self.feature_extractor(inputs)
         reg_outputs, cls_outputs = [], [] 
         for feature_map in feature_maps:
-            reg_outputs.append(tf.reshape(self.reg(feature_map), [self.batch_size, -1, 4]))
-            cls_outputs.append(tf.reshape(self.cls(feature_map), [self.batch_size, -1, self.total_labels]))
+            reg_outputs.append(tf.reshape(self.reg(feature_map), [
+                self.batch_size if batch_size == None else batch_size, -1, 4
+                ]))
+            cls_outputs.append(tf.reshape(self.cls(feature_map), [
+                self.batch_size if batch_size == None else batch_size, -1, self.total_labels
+                ]))
         reg_outputs = tf.concat(reg_outputs, axis=1)
         cls_outputs = tf.concat(cls_outputs, axis=1)
 
@@ -154,7 +158,7 @@ class Decoder(tf.keras.layers.Layer):
         cls_predictions = tf.nn.sigmoid(cls_pred)
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_pred)
 
-        return tf.image.combined_non_max_suppression(
+        boxes, scores, labels =  tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
             self.max_total_size,
@@ -163,3 +167,5 @@ class Decoder(tf.keras.layers.Layer):
             self.score_threshold,
             clip_boxes=False,
         )
+
+        return boxes, scores, labels

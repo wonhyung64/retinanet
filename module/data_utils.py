@@ -3,6 +3,8 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from typing import Tuple
 from tensorflow.keras.layers import Lambda
+from .target_utils import LabelEncoder
+from .box_utils import convert_to_xywh
 
 
 def load_dataset(name, data_dir):
@@ -34,7 +36,6 @@ def load_dataset(name, data_dir):
         labels = dataset_info.features["labels"].names
     except:
         labels = dataset_info.features["objects"]["label"].names
-    labels = ["bg"] + labels
 
     return (train_set, valid_set, test_set), labels, train_num, valid_num, test_num
 
@@ -46,9 +47,7 @@ def load_data_num(name, data_dir, train_set, valid_set, test_set):
         (valid_set, "validation"),
         (test_set, "test"),
     ):
-        path = f"{data_dir}/data_chkr"
-        os.makedirs(path, exist_ok=True)
-        data_num_dir = f"{path}/{''.join(char for char in name if char.isalnum())}_{dataset_name}_num.txt"
+        data_num_dir = f"{data_dir}/data_chkr/{''.join(char for char in name if char.isalnum())}_{dataset_name}_num.txt"
 
         if not (os.path.exists(data_num_dir)):
             data_num = build_data_num(dataset, dataset_name)
@@ -79,12 +78,6 @@ def build_data_num(dataset, dataset_name):
 
 def build_dataset(datasets, batch_size, img_size):
     train_set, valid_set, test_set = datasets
-    data_shapes = ([None, None, None], [None, None], [None])
-    padding_values = (
-        tf.constant(0, tf.float32),
-        tf.constant(0, tf.float32),
-        tf.constant(-1, tf.int32),
-    )
 
     train_set = train_set.map(lambda x: preprocess(x, split="train", img_size=img_size))
     test_set = test_set.map(lambda x: preprocess(x, split="test", img_size=img_size))
@@ -94,12 +87,19 @@ def build_dataset(datasets, batch_size, img_size):
 
     train_set = train_set.repeat().padded_batch(
         batch_size,
-        padded_shapes=data_shapes,
-        padding_values=padding_values,
-        drop_remainder=True,
+        padding_values=(0.0, 1e-8, -1),
+        drop_remainder=True
     )
+    train_set = train_set.map(
+        LabelEncoder().encode_batch, num_parallel_calls=tf.data.AUTOTUNE
+    )
+
     valid_set = valid_set.repeat().batch(1)
     test_set = test_set.repeat().batch(1)
+
+    train_set = train_set.apply(tf.data.experimental.ignore_errors())
+    train_set = train_set.apply(tf.data.experimental.ignore_errors())
+    train_set = train_set.apply(tf.data.experimental.ignore_errors())
 
     train_set = train_set.prefetch(tf.data.experimental.AUTOTUNE)
     valid_set = valid_set.prefetch(tf.data.experimental.AUTOTUNE)
@@ -124,19 +124,27 @@ def export_data(sample):
     return image, gt_boxes, gt_labels, is_diff
 
 
-def resize_and_rescale(image, img_size):
+def resize(image, img_size):
     transform = tf.keras.Sequential(
         [
             tf.keras.layers.experimental.preprocessing.Resizing(
                 img_size[0], img_size[1]
             ),
-            tf.keras.layers.experimental.preprocessing.Rescaling(1.0 / 255.0),
         ]
     )
     image = transform(image)
 
     return image
 
+def rescale(gt_boxes, img_size):
+    transform = tf.keras.Sequential(
+        [
+            tf.keras.layers.experimental.preprocessing.Rescaling([img_size[0]]),
+        ]
+    )
+    gt_boxes = tf.cast(transform(gt_boxes), dtype=tf.float32)
+
+    return gt_boxes
 
 def evaluate(gt_boxes, gt_labels, is_diff):
     not_diff = tf.logical_not(is_diff)
@@ -164,11 +172,14 @@ def rand_flip_horiz(image: tf.Tensor, gt_boxes: tf.Tensor) -> Tuple:
 
 def preprocess(dataset, split, img_size):
     image, gt_boxes, gt_labels, is_diff = export_data(dataset)
-    image = resize_and_rescale(image, img_size)
+    image = resize(image, img_size)
     if split == "train":
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
     else:
         gt_boxes, gt_labels = evaluate(gt_boxes, gt_labels, is_diff)
+    # image = tf.keras.applications.resnet.preprocess_input(image)
+    gt_boxes = rescale(gt_boxes, img_size)
+    gt_boxes = convert_to_xywh(gt_boxes)
     gt_labels = tf.cast(gt_labels, dtype=tf.int32)
 
     return image, gt_boxes, gt_labels

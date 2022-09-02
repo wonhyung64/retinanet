@@ -3,12 +3,15 @@ import time
 import tensorflow as tf
 import neptune.new as neptune
 from tqdm import tqdm
-from . import (
-    build_args,
-    plugin_neptune,
-    record_train_loss,
-    record_result,
+from .neptune_utils import *
+from .args_utils import build_args
+from .opt_utils import (
+    forward_backward,
+    build_optimizer,
 )
+from .model_utils import build_model
+from .test_utils import calculate_ap_const
+from .draw_utils import draw_output
 
 
 def initialize_process(NEPTUNE_API_KEY, NEPTUNE_PROJECT):
@@ -37,9 +40,8 @@ def run_process(
     test_set,
     weights_dir,
 ):
-    anchors = build_anchors(args)
-    rpn_model, dtn_model = build_models(args, len(labels))
-    optimizer1, optimizer2 = build_optimizer(args.batch_size, train_num)
+    model = build_model(args, total_labels=len(labels))
+    optimizer = build_optimizer(args.batch_size, train_num)
 
     train_time = train(
         run,
@@ -49,22 +51,17 @@ def run_process(
         train_set,
         valid_set,
         labels,
-        anchors,
-        rpn_model,
-        dtn_model,
-        optimizer1,
-        optimizer2,
+        model,
+        optimizer,
         weights_dir,
     )
     mean_ap, mean_test_time = test(
         run,
         test_num,
         test_set,
-        rpn_model,
-        dtn_model,
+        model,
         weights_dir,
         labels,
-        anchors,
         args,
     )
     record_result(run, weights_dir, train_time, mean_ap, mean_test_time)
@@ -78,98 +75,60 @@ def train(
     train_set,
     valid_set,
     labels,
-    anchors,
-    rpn_model,
-    dtn_model,
-    optimizer1,
-    optimizer2,
+    model,
+    optimizer,
     weights_dir,
 ):
     best_mean_ap = 0
     start_time = time.time()
-
-    for epoch in range(args.epochs):
-        epoch_progress = tqdm(range(train_num // args.batch_size))
+    alpha = args.alpha
+    gamma = args.gamma
+    delta = args.delta
+    epochs = args.epochs
+    batch_size = args.batch_size
+    total_labels = len(labels)
+    for epoch in range(epochs):
+        epoch_progress = tqdm(range(train_num // batch_size))
         for _ in epoch_progress:
-            image, gt_boxes, gt_labels = next(train_set)
+            img, true = next(train_set)
 
-            true_rpn = build_rpn_target(anchors, gt_boxes, gt_labels, args)
-            (
-                loss_rpn,
-                rpn_reg_output,
-                rpn_cls_output,
-                feature_map,
-            ) = forward_backward_rpn(
-                image,
-                true_rpn,
-                rpn_model,
-                optimizer1,
-                args.batch_size,
-                args.feature_map_shape,
-                args.anchor_ratios,
-                args.anchor_scales,
-                args.total_pos_bboxes,
-                args.total_neg_bboxes,
-            )
-
-            roi_bboxes, _ = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
-            pooled_roi = RoIAlign(roi_bboxes, feature_map, args)
-
-            true_dtn = build_dtn_target(
-                roi_bboxes, gt_boxes, gt_labels, len(labels), args
-            )
-            loss_dtn = forward_backward_dtn(
-                pooled_roi,
-                true_dtn,
-                dtn_model,
-                optimizer2,
-                len(labels),
-                args.batch_size,
-                args.train_nms_topn,
-            )
-
-            total_loss = tf.reduce_sum(loss_rpn + loss_dtn)
-            record_train_loss(run, loss_rpn, loss_dtn, total_loss)
+            reg_loss, cls_loss, total_loss = forward_backward(
+                img, true, model, optimizer, alpha, gamma, delta, total_labels
+                )
+            record_train_loss(run, reg_loss, cls_loss, total_loss)
 
             epoch_progress.set_description(
-                "Epoch {}/{} | rpn_reg {:.4f}, rpn_cls {:.4f}, dtn_reg {:.4f}, dtn_cls {:.4f}, total {:.4f}".format(
+                "Epoch {}/{} | reg {:.4f}, cls {:.4f}, total {:.4f}".format(
                     epoch + 1,
                     args.epochs,
-                    loss_rpn[0].numpy(),
-                    loss_rpn[1].numpy(),
-                    loss_dtn[0].numpy(),
-                    loss_dtn[1].numpy(),
+                    reg_loss.numpy(),
+                    cls_loss.numpy(),
                     total_loss.numpy(),
                 )
             )
         mean_ap = validation(
-            valid_set, valid_num, rpn_model, dtn_model, labels, anchors, args
+            valid_set, valid_num, model, labels, args
         )
 
         run["validation/mAP"].log(mean_ap.numpy())
 
         if mean_ap.numpy() > best_mean_ap:
             best_mean_ap = mean_ap.numpy()
-            rpn_model.save_weights(f"{weights_dir}_rpn.h5")
-            dtn_model.save_weights(f"{weights_dir}_dtn.h5")
+            model.save_weights(f"{weights_dir}_rpn.h5")
 
     train_time = time.time() - start_time
 
     return train_time
 
-
-def validation(valid_set, valid_num, rpn_model, dtn_model, labels, anchors, args):
+from .model_utils import Decoder
+def validation(valid_set, valid_num, model, labels, args):
+    decode = Decoder(args, total_labels=len(labels))
     aps = []
     validation_progress = tqdm(range(valid_num))
     for _ in validation_progress:
-        image, gt_boxes, gt_labels = next(valid_set)
-        rpn_reg_output, rpn_cls_output, feature_map = rpn_model(image)
-        roi_bboxes, _ = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
-        pooled_roi = RoIAlign(roi_bboxes, feature_map, args)
-        dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-        final_bboxes, final_labels, final_scores = Decode(
-            dtn_reg_output, dtn_cls_output, roi_bboxes, args, len(labels)
-        )
+        img, gt_boxes, gt_labels = next(valid_set)
+        reg_pred, cls_pred = model(img)
+        final_bboxes, final_scores, final_labels = decode(reg_pred, cls_pred)
 
         ap = calculate_ap_const(
             final_bboxes, final_labels, gt_boxes, gt_labels, len(labels)
@@ -185,25 +144,20 @@ def validation(valid_set, valid_num, rpn_model, dtn_model, labels, anchors, args
 
 
 def test(
-    run, test_num, test_set, rpn_model, dtn_model, weights_dir, labels, anchors, args
+    run, test_num, test_set, model, weights_dir, labels, args
 ):
-    rpn_model.load_weights(f"{weights_dir}_rpn.h5")
-    dtn_model.load_weights(f"{weights_dir}_dtn.h5")
+    model.load_weights(f"{weights_dir}_dtn.h5")
+    decode = Decoder(args, total_labels = len(labels))
 
     test_times = []
     aps = []
     test_progress = tqdm(range(test_num))
     for step in test_progress:
-        image, gt_boxes, gt_labels = next(test_set)
+        img, gt_boxes, gt_labels = next(test_set)
         start_time = time.time()
-        rpn_reg_output, rpn_cls_output, feature_map = rpn_model(image)
-        roi_bboxes, roi_scores = RoIBBox(rpn_reg_output, rpn_cls_output, anchors, args)
-        pooled_roi = RoIAlign(roi_bboxes, feature_map, args)
-        dtn_reg_output, dtn_cls_output = dtn_model(pooled_roi)
-        final_bboxes, final_labels, final_scores = Decode(
-            dtn_reg_output, dtn_cls_output, roi_bboxes, args, len(labels)
-        )
         test_time = time.time() - start_time
+        reg_pred, cls_pred = model(img)
+        final_bboxes, final_scores, final_labels = decode(reg_pred, cls_pred)
 
         ap = calculate_ap_const(
             final_bboxes, final_labels, gt_boxes, gt_labels, len(labels)
@@ -213,15 +167,10 @@ def test(
         test_times.append(test_time)
 
         if step <= 20:
-            run["outputs/rpn"].log(
-                neptune.types.File.as_image(
-                    draw_rpn_output(image, roi_bboxes, roi_scores, 5)
-                )
-            )
             run["outputs/dtn"].log(
                 neptune.types.File.as_image(
-                    draw_dtn_output(
-                        image, final_bboxes, labels, final_labels, final_scores
+                    draw_output(
+                        img, final_bboxes, labels, final_labels, final_scores
                     )
                 )
             )
