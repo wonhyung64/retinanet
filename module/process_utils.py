@@ -114,7 +114,7 @@ def train(
 
         if mean_ap.numpy() > best_mean_ap:
             best_mean_ap = mean_ap.numpy()
-            model.save_weights(f"{weights_dir}_rpn.h5")
+            model.save_weights(f"{weights_dir}.h5")
 
     train_time = time.time() - start_time
 
@@ -146,7 +146,7 @@ def validation(valid_set, valid_num, model, labels, args):
 def test(
     run, test_num, test_set, model, weights_dir, labels, args
 ):
-    model.load_weights(f"{weights_dir}_dtn.h5")
+    model.load_weights(f"{weights_dir}.h5")
     decode = Decoder(args, total_labels = len(labels))
 
     test_times = []

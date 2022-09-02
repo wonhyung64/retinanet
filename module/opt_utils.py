@@ -23,6 +23,7 @@ def forward_backward(
     total_labels
 ):
     with tf.GradientTape(persistent=True) as tape:
+        # tape.watch(img)
         pred = model(img)
         reg_loss, cls_loss, total_loss = calculate_loss(true, pred, alpha, gamma, delta, total_labels)
 
