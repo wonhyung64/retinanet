@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=hgx
 ##
-#SBATCH --job-name=frcnn_coco17
+#SBATCH --job-name=retina_coco17
 #SBATCH -o SLURM.%N.%j.out
 #SBATCH -e SLURM.%N.%j.err
 ##

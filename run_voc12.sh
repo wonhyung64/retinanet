@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=hgx
 ##
-#SBATCH --job-name=frcnn_voc12
+#SBATCH --job-name=retina_voc12
 #SBATCH -o SLURM.%N.%j.out
 #SBATCH -e SLURM.%N.%j.err
 ##
