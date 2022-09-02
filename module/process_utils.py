@@ -127,7 +127,7 @@ def validation(valid_set, valid_num, model, labels, args):
     validation_progress = tqdm(range(valid_num))
     for _ in validation_progress:
         img, gt_boxes, gt_labels = next(valid_set)
-        reg_pred, cls_pred = model(img)
+        reg_pred, cls_pred = model(img, 1)
         final_bboxes, final_scores, final_labels = decode(reg_pred, cls_pred)
 
         ap = calculate_ap_const(
@@ -156,7 +156,7 @@ def test(
         img, gt_boxes, gt_labels = next(test_set)
         start_time = time.time()
         test_time = time.time() - start_time
-        reg_pred, cls_pred = model(img)
+        reg_pred, cls_pred = model(img, 1)
         final_bboxes, final_scores, final_labels = decode(reg_pred, cls_pred)
 
         ap = calculate_ap_const(
