@@ -34,7 +34,7 @@ class FeatureExtractor(Model):
         self.conv_c4_3 = Conv2D(256, 3, 1, "same")
         self.conv_c5_3 = Conv2D(256, 3, 1, "same")
         self.conv_c6_3 = Conv2D(256, 3, 2, "same")
-        self.conv_c7_3 = Conv2D(256, 3, 2, "same", activation="ReLU")
+        self.conv_c7_3 = Conv2D(256, 3, 2, "same", activation="relu")
         self.upsample = UpSampling2D(2)
 
 
@@ -158,7 +158,7 @@ class Decoder(tf.keras.layers.Layer):
         cls_predictions = tf.nn.sigmoid(cls_pred)
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_pred)
 
-        boxes, scores, labels =  tf.image.combined_non_max_suppression(
+        boxes, scores, labels, _ =  tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
             self.max_total_size,
