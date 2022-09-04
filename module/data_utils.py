@@ -177,7 +177,7 @@ def preprocess(dataset, split, img_size):
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
     else:
         gt_boxes, gt_labels = evaluate(gt_boxes, gt_labels, is_diff)
-    # image = tf.keras.applications.resnet.preprocess_input(image)
+    image = tf.keras.applications.resnet.preprocess_input(image)
     gt_boxes = rescale(gt_boxes, img_size)
     gt_boxes = convert_to_xywh(gt_boxes)
     gt_labels = tf.cast(gt_labels, dtype=tf.int32)
