@@ -46,7 +46,9 @@ def calculate_loss(true, pred, alpha, gamma, delta, total_labels):
     _cls_loss = RetinaNetClsLoss(alpha, gamma)
     _reg_loss = RetinaNetRegLoss(delta)
 
-    reg_true, cls_true = true
+    reg_true = true[...,:4]
+    cls_true = true[...,4]
+
     reg_pred = tf.cast(pred[0], dtype=tf.float32)
     cls_pred = tf.cast(pred[1], dtype=tf.float32)
 
