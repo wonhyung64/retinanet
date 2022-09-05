@@ -187,6 +187,6 @@ class Decoder(tf.keras.layers.Layer):
             self.score_threshold,
             clip_boxes=False,
         )
-        boxes = tf.stack([boxes[:, 1], boxes[:, 0], boxes[:, 3], boxes[:, 2]], axis=-1)
+        boxes = tf.stack([boxes[...,1], boxes[..., 0], boxes[..., 3], boxes[..., 2]], axis=-1)
 
         return boxes, scores, labels
