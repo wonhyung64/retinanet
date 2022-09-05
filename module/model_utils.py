@@ -14,7 +14,7 @@ from .box_utils import convert_to_corners
 
 
 class FeatureExtractor(Model):
-    def __init__(self, args) -> None:
+    def __init__(self, args, trainable) -> None:
         super(FeatureExtractor, self).__init__()
         self.shape = args.img_size + [3]
         self.base_model = ResNet50(
@@ -26,7 +26,8 @@ class FeatureExtractor(Model):
             for layer in ["conv3_block4_out", "conv4_block6_out", "conv5_block3_out"]
             ]
         self.backbone = Model(inputs=self.base_model.input, outputs=self.layer_seq)
-        self.backbone.trainable = False
+        if trainable == False:
+            self.backbone.trainable = False
 
         self.conv_c3_1 = Conv2D(256, 1, 1, "same")
         self.conv_c4_1 = Conv2D(256, 1, 1, "same")
@@ -71,9 +72,9 @@ class CustomUpSampling2D(tf.keras.layers.Layer):
 
 
 class RetinaNet(Model):
-    def __init__(self, args, total_labels) -> None:
+    def __init__(self, args, total_labels, trainable=True) -> None:
         super(RetinaNet, self).__init__()
-        self.feature_extractor = FeatureExtractor(args)
+        self.feature_extractor = FeatureExtractor(args, trainable)
         self.total_labels = total_labels
         self.batch_size = args.batch_size
         self.anchor_counts = 9
