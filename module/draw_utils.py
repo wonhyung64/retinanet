@@ -14,10 +14,10 @@ def draw_output(
     width, height = image.size
     draw = ImageDraw.Draw(image)
 
-    y1 = final_bboxes[0][..., 0] * height
-    x1 = final_bboxes[0][..., 1] * width
-    y2 = final_bboxes[0][..., 2] * height
-    x2 = final_bboxes[0][..., 3] * width
+    y1 = final_bboxes[0][..., 0]
+    x1 = final_bboxes[0][..., 1]
+    y2 = final_bboxes[0][..., 2]
+    x2 = final_bboxes[0][..., 3]
 
     denormalized_box = tf.round(tf.stack([y1, x1, y2, x2], axis=-1))
 
@@ -25,8 +25,6 @@ def draw_output(
 
     for index, bbox in enumerate(denormalized_box):
         y1, x1, y2, x2 = tf.split(bbox, 4, axis=-1)
-        width = x2 - x1
-        height = y2 - y1
 
         final_labels_ = tf.reshape(final_labels[0], shape=(200,))
         final_scores_ = tf.reshape(final_scores[0], shape=(200,))

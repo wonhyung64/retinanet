@@ -12,6 +12,7 @@ from .opt_utils import (
 from .model_utils import build_model
 from .test_utils import calculate_ap_const
 from .draw_utils import draw_output
+from .model_utils import Decoder
 
 
 def initialize_process(NEPTUNE_API_KEY, NEPTUNE_PROJECT):
@@ -110,7 +111,7 @@ def train(
                 )
             )
         mean_ap = validation(
-            valid_set, valid_num, model, labels, args
+            run, valid_set, valid_num, model, labels, args
         )
 
         run["validation/mAP"].log(mean_ap.numpy())
@@ -123,8 +124,8 @@ def train(
 
     return train_time
 
-from .model_utils import Decoder
-def validation(valid_set, valid_num, model, labels, args):
+
+def validation(run, valid_set, valid_num, model, labels, args):
     decode = Decoder(args, total_labels=len(labels))
     aps = []
     validation_progress = tqdm(range(valid_num))
@@ -138,6 +139,13 @@ def validation(valid_set, valid_num, model, labels, args):
         )
         validation_progress.set_description(
             "Validation | Average_Precision {:.4f}".format(ap)
+        )
+        run["outputs"].log(
+            neptune.types.File.as_image(
+                draw_output(
+                    img, final_bboxes, labels, final_labels, final_scores
+                )
+            )
         )
         aps.append(ap)
 
@@ -170,7 +178,7 @@ def test(
         test_times.append(test_time)
 
         if step <= 20:
-            run["outputs/dtn"].log(
+            run["outputs"].log(
                 neptune.types.File.as_image(
                     draw_output(
                         img, final_bboxes, labels, final_labels, final_scores
