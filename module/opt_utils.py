@@ -4,7 +4,7 @@ from .loss_utils import calculate_loss
 
 def build_optimizer(batch_size, data_num):
     boundaries = [data_num // batch_size * epoch for epoch in (1, 50, 60, 70)]
-    values = [1e-4, 1e-3, 1e-4, 1e-5, 1e-6]
+    values = [1e-5, 1e-3, 1e-4, 1e-6, 1e-7]
     lr_fn = tf.keras.optimizers.schedules.PiecewiseConstantDecay(boundaries, values)
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_fn)
 

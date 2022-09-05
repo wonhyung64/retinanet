@@ -5,7 +5,7 @@ def build_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, default="voc/2007")
     parser.add_argument("--epochs", type=int, default=75)
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--data-dir", type=str, default="/Users/wonhyung64/data")
     parser.add_argument("--img-size", nargs="+", type=int, default=[512, 512])
     parser.add_argument(
