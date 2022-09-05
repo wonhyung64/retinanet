@@ -12,6 +12,7 @@ from typing import List
 from .anchor_utils import AnchorBox
 from .box_utils import convert_to_corners
 
+
 class FeatureExtractor(Model):
     def __init__(self, args) -> None:
         super(FeatureExtractor, self).__init__()
@@ -35,7 +36,7 @@ class FeatureExtractor(Model):
         self.conv_c5_3 = Conv2D(256, 3, 1, "same")
         self.conv_c6_3 = Conv2D(256, 3, 2, "same")
         self.conv_c7_3 = Conv2D(256, 3, 2, "same", activation="relu")
-        self.upsample = UpSampling2D(2)
+        self.upsample = CustomUpSampling2D(2)
 
 
     @tf.function
@@ -53,6 +54,20 @@ class FeatureExtractor(Model):
         p7 = self.conv_c7_3(p6)
 
         return p3, p4, p5, p6, p7
+
+
+class CustomUpSampling2D(tf.keras.layers.Layer):
+    def __init__(self, size):
+        super(CustomUpSampling2D, self).__init__()
+        if type(size) is not tuple and type(size) is not list:
+            size = (size, size)
+        self.size = size
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, input):
+        return tf.repeat(tf.repeat(input, self.size[0], axis=1), self.size[1], axis=2)
 
 
 class RetinaNet(Model):
