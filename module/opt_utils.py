@@ -16,18 +16,28 @@ def forward_backward(
     img,
     true,
     model,
+    buffer_model,
     optimizer,
     alpha,
     gamma,
     delta,
+    weights_decay,
     total_labels
 ):
     with tf.GradientTape(persistent=True) as tape:
-        # tape.watch(img)
         pred = model(img)
         reg_loss, cls_loss, total_loss = calculate_loss(true, pred, alpha, gamma, delta, total_labels)
 
     grads = tape.gradient(total_loss, model.trainable_weights)
     optimizer.apply_gradients(zip(grads, model.trainable_weights))
+    weight_decay_decoupled(model, buffer_model, weights_decay)
 
     return reg_loss, cls_loss, total_loss
+
+
+def weight_decay_decoupled(model, buffer_model, decay_rate):
+    for var, buffer_var in zip(model.trainable_weights, buffer_model.trainable_weights):
+        var.assign(var - decay_rate * buffer_var)
+
+    for var, buffer_var in zip(model.trainable_weights, buffer_model.trainable_weights):
+        buffer_var.assign(var)

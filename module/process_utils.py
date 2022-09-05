@@ -40,7 +40,7 @@ def run_process(
     test_set,
     weights_dir,
 ):
-    model = build_model(args, total_labels=len(labels))
+    model, buffer_model = build_model(args, total_labels=len(labels))
     optimizer = build_optimizer(args.batch_size, train_num)
 
     train_time = train(
@@ -52,6 +52,7 @@ def run_process(
         valid_set,
         labels,
         model,
+        buffer_model,
         optimizer,
         weights_dir,
     )
@@ -76,6 +77,7 @@ def train(
     valid_set,
     labels,
     model,
+    buffer_model,
     optimizer,
     weights_dir,
 ):
@@ -86,6 +88,7 @@ def train(
     delta = args.delta
     epochs = args.epochs
     batch_size = args.batch_size
+    weights_decay = args.weights_decay
     total_labels = len(labels)
     for epoch in range(epochs):
         epoch_progress = tqdm(range(train_num // batch_size))
@@ -93,7 +96,7 @@ def train(
             img, true = next(train_set)
 
             reg_loss, cls_loss, total_loss = forward_backward(
-                img, true, model, optimizer, alpha, gamma, delta, total_labels
+                img, true, model, buffer_model, optimizer, alpha, gamma, delta, weights_decay, total_labels
                 )
             record_train_loss(run, reg_loss, cls_loss, total_loss)
 

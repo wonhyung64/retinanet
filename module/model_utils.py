@@ -130,7 +130,11 @@ def build_model(args, total_labels):
     input_shape = [None] + args.img_size + [3]
     model.build(input_shape=input_shape)
 
-    return model
+    buffer_model = RetinaNet(args, total_labels=total_labels)
+    buffer_model.build(input_shape=input_shape)
+    buffer_model.set_weights(model.get_weights())
+
+    return model, buffer_model
 
 
 class Decoder(tf.keras.layers.Layer):
