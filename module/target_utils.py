@@ -94,6 +94,7 @@ class LabelEncoder:
         cls_target = tf.where(tf.equal(ignore_mask, 1.0), -2.0, cls_target)
         cls_target = tf.expand_dims(cls_target, axis=-1)
         label = tf.concat([box_target, cls_target], axis=-1)
+
         return label
 
     def encode_batch(self, batch_images, gt_boxes, cls_ids):

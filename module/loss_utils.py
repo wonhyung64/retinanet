@@ -46,9 +46,7 @@ def calculate_loss(true, pred, alpha, gamma, delta, total_labels):
     _cls_loss = RetinaNetClsLoss(alpha, gamma)
     _reg_loss = RetinaNetRegLoss(delta)
 
-    reg_true = true[...,:4]
-    cls_true = true[...,4]
-
+    reg_true, cls_true = true
     reg_pred = tf.cast(pred[0], dtype=tf.float32)
     cls_pred = tf.cast(pred[1], dtype=tf.float32)
 
@@ -64,12 +62,13 @@ def calculate_loss(true, pred, alpha, gamma, delta, total_labels):
     reg_loss = _reg_loss(reg_true, reg_pred)
     cls_loss = _cls_loss(cls_true, cls_pred)
 
-    cls_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, cls_loss)
     reg_loss = tf.where(tf.equal(positive_mask, 1.0), reg_loss, 0.0)
+    cls_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, cls_loss)
 
     normalizer = tf.stop_gradient(tf.reduce_sum(positive_mask, axis=-1))
-    cls_loss = tf.reduce_mean(tf.math.divide_no_nan(tf.reduce_sum(cls_loss, axis=-1), normalizer))
     reg_loss = tf.reduce_mean(tf.math.divide_no_nan(tf.reduce_sum(reg_loss, axis=-1), normalizer))
+    cls_loss = tf.reduce_mean(tf.math.divide_no_nan(tf.reduce_sum(cls_loss, axis=-1), normalizer))
+
     total_loss = cls_loss + reg_loss
 
     return reg_loss, cls_loss, total_loss
