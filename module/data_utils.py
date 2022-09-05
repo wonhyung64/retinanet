@@ -4,7 +4,10 @@ import tensorflow_datasets as tfds
 from typing import Tuple
 from tensorflow.keras.layers import Lambda
 from .target_utils import LabelEncoder
-from .box_utils import convert_to_xywh
+from .box_utils import (
+    convert_to_xywh,
+    swap_xy,
+)
 
 
 def load_dataset(name, data_dir):
@@ -112,6 +115,22 @@ def build_dataset(datasets, batch_size, img_size):
     return train_set, valid_set, test_set
 
 
+def preprocess(dataset, split, img_size):
+    image, gt_boxes, gt_labels, is_diff = export_data(dataset)
+    gt_boxes = swap_xy(gt_boxes)
+    image = resize(image, img_size)
+    if split == "train":
+        image, gt_boxes = rand_flip_horiz(image, gt_boxes)
+    else:
+        gt_boxes, gt_labels = evaluate(gt_boxes, gt_labels, is_diff)
+    image = tf.keras.applications.resnet.preprocess_input(image)
+    gt_boxes = rescale(gt_boxes, img_size)
+    gt_boxes = convert_to_xywh(gt_boxes)
+    gt_labels = tf.cast(gt_labels, dtype=tf.int32)
+
+    return image, gt_boxes, gt_labels
+
+
 def export_data(sample):
     image = Lambda(lambda x: x["image"])(sample)
     gt_boxes = Lambda(lambda x: x["objects"]["bbox"])(sample)
@@ -136,23 +155,6 @@ def resize(image, img_size):
 
     return image
 
-def rescale(gt_boxes, img_size):
-    transform = tf.keras.Sequential(
-        [
-            tf.keras.layers.experimental.preprocessing.Rescaling([img_size[0]]),
-        ]
-    )
-    gt_boxes = tf.cast(transform(gt_boxes), dtype=tf.float32)
-
-    return gt_boxes
-
-def evaluate(gt_boxes, gt_labels, is_diff):
-    not_diff = tf.logical_not(is_diff)
-    gt_boxes = Lambda(lambda x: x[not_diff])(gt_boxes)
-    gt_labels = Lambda(lambda x: x[not_diff])(gt_labels)
-
-    return gt_boxes, gt_labels
-
 
 def rand_flip_horiz(image: tf.Tensor, gt_boxes: tf.Tensor) -> Tuple:
     if tf.random.uniform([1]) > tf.constant([0.5]):
@@ -170,16 +172,20 @@ def rand_flip_horiz(image: tf.Tensor, gt_boxes: tf.Tensor) -> Tuple:
     return image, gt_boxes
 
 
-def preprocess(dataset, split, img_size):
-    image, gt_boxes, gt_labels, is_diff = export_data(dataset)
-    image = resize(image, img_size)
-    if split == "train":
-        image, gt_boxes = rand_flip_horiz(image, gt_boxes)
-    else:
-        gt_boxes, gt_labels = evaluate(gt_boxes, gt_labels, is_diff)
-    image = tf.keras.applications.resnet.preprocess_input(image)
-    gt_boxes = rescale(gt_boxes, img_size)
-    gt_boxes = convert_to_xywh(gt_boxes)
-    gt_labels = tf.cast(gt_labels, dtype=tf.int32)
+def evaluate(gt_boxes, gt_labels, is_diff):
+    not_diff = tf.logical_not(is_diff)
+    gt_boxes = Lambda(lambda x: x[not_diff])(gt_boxes)
+    gt_labels = Lambda(lambda x: x[not_diff])(gt_labels)
 
-    return image, gt_boxes, gt_labels
+    return gt_boxes, gt_labels
+
+
+def rescale(gt_boxes, img_size):
+    transform = tf.keras.Sequential(
+        [
+            tf.keras.layers.experimental.preprocessing.Rescaling([img_size[0]]),
+        ]
+    )
+    gt_boxes = tf.cast(transform(gt_boxes), dtype=tf.float32)
+
+    return gt_boxes
