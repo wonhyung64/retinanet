@@ -161,10 +161,10 @@ def rand_flip_horiz(image: tf.Tensor, gt_boxes: tf.Tensor) -> Tuple:
         image = tf.image.flip_left_right(image)
         gt_boxes = tf.stack(
             [
-                Lambda(lambda x: x[..., 0])(gt_boxes),
-                Lambda(lambda x: 1.0 - x[..., 3])(gt_boxes),
-                Lambda(lambda x: x[..., 2])(gt_boxes),
-                Lambda(lambda x: 1.0 - x[..., 1])(gt_boxes),
+                Lambda(lambda x: 1.0 - x[..., 2])(gt_boxes),
+                Lambda(lambda x: x[..., 1])(gt_boxes),
+                Lambda(lambda x: 1.0 - x[..., 0])(gt_boxes),
+                Lambda(lambda x: x[..., 3])(gt_boxes),
             ],
             -1,
         )
