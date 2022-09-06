@@ -46,7 +46,7 @@ def swap_xy(boxes):
     Returns:
       swapped boxes with shape same as that of boxes.
     """
-    return tf.stack([boxes[:, 1], boxes[:, 0], boxes[:, 3], boxes[:, 2]], axis=-1)
+    return tf.stack([boxes[..., 1], boxes[..., 0], boxes[..., 3], boxes[..., 2]], axis=-1)
 
 
 def convert_to_xywh(boxes):

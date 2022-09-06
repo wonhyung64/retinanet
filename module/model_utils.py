@@ -187,6 +187,6 @@ class Decoder(tf.keras.layers.Layer):
             clip_boxes=False,
         )
         boxes = swap_xy(boxes)
-        boxes = tf.stack([swap_xy(x[None, ...]) for x in boxes[0]], axis=1)
+        # boxes = tf.stack([swap_xy(x[None, ...]) for x in boxes[0]], axis=1)
 
         return boxes, scores, labels
