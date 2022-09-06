@@ -97,8 +97,8 @@ def build_dataset(datasets, batch_size, img_size):
     #     LabelEncoder().encode_batch, num_parallel_calls=tf.data.AUTOTUNE
     # )
 
-    valid_set = valid_set.batch(1)
-    test_set = test_set.batch(1)
+    valid_set = valid_set.repeat().batch(1)
+    test_set = test_set.repeat().batch(1)
 
     train_set = train_set.apply(tf.data.experimental.ignore_errors())
     train_set = train_set.apply(tf.data.experimental.ignore_errors())
