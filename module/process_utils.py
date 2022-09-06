@@ -13,6 +13,7 @@ from .model_utils import build_model
 from .test_utils import calculate_ap_const
 from .draw_utils import draw_output
 from .model_utils import Decoder
+from .target_utils import LabelEncoder
 
 
 def initialize_process(NEPTUNE_API_KEY, NEPTUNE_PROJECT):
@@ -91,11 +92,15 @@ def train(
     batch_size = args.batch_size
     weights_decay = args.weights_decay
     total_labels = len(labels)
+    label_encoder = LabelEncoder()
+
     for epoch in range(epochs):
+        train_set = iter(train_set)
+        valid_set = iter(valid_set)
         epoch_progress = tqdm(range(train_num // batch_size))
         for _ in epoch_progress:
-            img, true = next(train_set)
-
+            img, gt_boxes, gt_labels = next(train_set)
+            img, true = label_encoder.encode_batch(img, gt_boxes, gt_labels)
             reg_loss, cls_loss, total_loss = forward_backward(
                 img, true, model, buffer_model, optimizer, alpha, gamma, delta, weights_decay, total_labels
                 )
@@ -159,6 +164,7 @@ def test(
 ):
     model.load_weights(f"{weights_dir}.h5")
     decode = Decoder(args, total_labels = len(labels))
+    test_set = iter(test_set)
 
     test_times = []
     aps = []

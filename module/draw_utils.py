@@ -10,8 +10,11 @@ def draw_output(
     final_scores,
 ):
     image = tf.squeeze(image, axis=0)
+    image = tf.stack([
+            image[..., 2], image[..., 1], image[..., 0]
+                
+            ], axis=-1)
     image = tf.keras.preprocessing.image.array_to_img(image)
-    width, height = image.size
     draw = ImageDraw.Draw(image)
 
     y1 = final_bboxes[0][..., 0]

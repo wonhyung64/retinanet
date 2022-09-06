@@ -1,3 +1,4 @@
+#%%
 from module.variable import (
     NEPTUNE_API_KEY,
     NEPTUNE_PROJECT,
@@ -11,7 +12,7 @@ from module.process_utils import (
     run_process,
 )
 
-
+#%%
 if __name__ == "__main__":
     args, run, weights_dir = initialize_process(
         NEPTUNE_API_KEY, NEPTUNE_PROJECT
@@ -35,3 +36,4 @@ if __name__ == "__main__":
         test_set,
         weights_dir,
     )
+

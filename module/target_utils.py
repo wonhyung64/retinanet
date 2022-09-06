@@ -4,16 +4,6 @@ from .box_utils import compute_iou
 
 
 class LabelEncoder:
-    """Transforms the raw labels into targets for training.
-
-    This class has operations to generate targets for a batch of samples which
-    is made up of the input images, bounding boxes for the objects present and
-    their class ids.
-
-    Attributes:
-      anchor_box: Anchor box generator to encode the bounding boxes.
-      box_variance: The scaling factors used to scale the bounding box targets.
-    """
 
     def __init__(self):
         self._anchor_box = AnchorBox()
@@ -24,36 +14,6 @@ class LabelEncoder:
     def _match_anchor_boxes(
         self, anchor_boxes, gt_boxes, match_iou=0.5, ignore_iou=0.4
     ):
-        """Matches ground truth boxes to anchor boxes based on IOU.
-
-        1. Calculates the pairwise IOU for the M `anchor_boxes` and N `gt_boxes`
-          to get a `(M, N)` shaped matrix.
-        2. The ground truth box with the maximum IOU in each row is assigned to
-          the anchor box provided the IOU is greater than `match_iou`.
-        3. If the maximum IOU in a row is less than `ignore_iou`, the anchor
-          box is assigned with the background class.
-        4. The remaining anchor boxes that do not have any class assigned are
-          ignored during training.
-
-        Arguments:
-          anchor_boxes: A float tensor with the shape `(total_anchors, 4)`
-            representing all the anchor boxes for a given input image shape,
-            where each anchor box is of the format `[x, y, width, height]`.
-          gt_boxes: A float tensor with shape `(num_objects, 4)` representing
-            the ground truth boxes, where each box is of the format
-            `[x, y, width, height]`.
-          match_iou: A float value representing the minimum IOU threshold for
-            determining if a ground truth box can be assigned to an anchor box.
-          ignore_iou: A float value representing the IOU threshold under which
-            an anchor box is assigned to the background class.
-
-        Returns:
-          matched_gt_idx: Index of the matched object
-          positive_mask: A mask for anchor boxes that have been assigned ground
-            truth boxes.
-          ignore_mask: A mask for anchor boxes that need to by ignored during
-            training
-        """
         iou_matrix = compute_iou(anchor_boxes, gt_boxes)
         max_iou = tf.reduce_max(iou_matrix, axis=1)
         matched_gt_idx = tf.argmax(iou_matrix, axis=1)
@@ -67,7 +27,6 @@ class LabelEncoder:
         )
 
     def _compute_box_target(self, anchor_boxes, matched_gt_boxes):
-        """Transforms the ground truth boxes into targets for training"""
         box_target = tf.concat(
             [
                 (matched_gt_boxes[:, :2] - anchor_boxes[:, :2]) / anchor_boxes[:, 2:],
@@ -79,7 +38,6 @@ class LabelEncoder:
         return box_target
 
     def _encode_sample(self, image_shape, gt_boxes, cls_ids):
-        """Creates box and classification targets for a single sample"""
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
         cls_ids = tf.cast(cls_ids, dtype=tf.float32)
         matched_gt_idx, positive_mask, ignore_mask = self._match_anchor_boxes(
@@ -93,18 +51,17 @@ class LabelEncoder:
         )
         cls_target = tf.where(tf.equal(ignore_mask, 1.0), -2.0, cls_target)
         cls_target = tf.expand_dims(cls_target, axis=-1)
-        label = tf.concat([box_target, cls_target], axis=-1)
-
-        return label
+        return box_target, cls_target
 
     def encode_batch(self, batch_images, gt_boxes, cls_ids):
-        """Creates box and classification targets for a batch"""
         images_shape = tf.shape(batch_images)
         batch_size = images_shape[0]
 
-        labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
+        box_labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
+        cls_labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
         for i in range(batch_size):
-            label = self._encode_sample(images_shape, gt_boxes[i], cls_ids[i])
-            labels = labels.write(i, label)
-
-        return batch_images, labels.stack()
+            box_target, cls_target = self._encode_sample(images_shape, gt_boxes[i], cls_ids[i])
+            box_labels = box_labels.write(i, box_target)
+            cls_labels = cls_labels.write(i, cls_target)
+        # batch_images = tf.keras.applications.resnet.preprocess_input(batch_images)
+        return batch_images, (box_labels.stack(), tf.squeeze(cls_labels.stack(), axis=-1))
