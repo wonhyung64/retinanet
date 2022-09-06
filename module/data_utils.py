@@ -93,12 +93,12 @@ def build_dataset(datasets, batch_size, img_size):
         padding_values=(0.0, 1e-8, -1),
         drop_remainder=True
     )
-    train_set = train_set.map(
-        LabelEncoder().encode_batch, num_parallel_calls=tf.data.AUTOTUNE
-    )
+    # train_set = train_set.map(
+    #     LabelEncoder().encode_batch, num_parallel_calls=tf.data.AUTOTUNE
+    # )
 
-    valid_set = valid_set.repeat().batch(1)
-    test_set = test_set.repeat().batch(1)
+    valid_set = valid_set.batch(1)
+    test_set = test_set.batch(1)
 
     train_set = train_set.apply(tf.data.experimental.ignore_errors())
     train_set = train_set.apply(tf.data.experimental.ignore_errors())
@@ -108,9 +108,9 @@ def build_dataset(datasets, batch_size, img_size):
     valid_set = valid_set.prefetch(tf.data.experimental.AUTOTUNE)
     test_set = test_set.prefetch(tf.data.experimental.AUTOTUNE)
 
-    train_set = iter(train_set)
-    valid_set = iter(valid_set)
-    test_set = iter(test_set)
+    # train_set = iter(train_set)
+    # valid_set = iter(valid_set)
+    # test_set = iter(test_set)
 
     return train_set, valid_set, test_set
 
@@ -121,10 +121,11 @@ def preprocess(dataset, split, img_size):
     if split == "train":
         gt_boxes = swap_xy(gt_boxes)
         image, gt_boxes = rand_flip_horiz(image, gt_boxes)
+        gt_boxes = rescale(gt_boxes, img_size)
         gt_boxes = convert_to_xywh(gt_boxes)
     else:
         gt_boxes, gt_labels = evaluate(gt_boxes, gt_labels, is_diff)
-    gt_boxes = rescale(gt_boxes, img_size)
+        gt_boxes = rescale(gt_boxes, img_size)
     image = tf.keras.applications.resnet.preprocess_input(image)
     gt_labels = tf.cast(gt_labels, dtype=tf.int32)
 

@@ -10,7 +10,7 @@ from tensorflow.keras.layers import (
 ) 
 from typing import List
 from .anchor_utils import AnchorBox
-from .box_utils import convert_to_corners
+from .box_utils import convert_to_corners, swap_xy
 
 
 class FeatureExtractor(Model):
@@ -177,7 +177,6 @@ class Decoder(tf.keras.layers.Layer):
         anchor_boxes = self._anchor_box.get_anchors(self.img_size[0], self.img_size[1])
         cls_predictions = tf.nn.sigmoid(cls_pred)
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_pred)
-
         boxes, scores, labels, _ =  tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
@@ -187,6 +186,7 @@ class Decoder(tf.keras.layers.Layer):
             self.score_threshold,
             clip_boxes=False,
         )
-        boxes = tf.stack([boxes[...,1], boxes[..., 0], boxes[..., 3], boxes[..., 2]], axis=-1)
+        boxes = swap_xy(boxes)
+        boxes = tf.stack([swap_xy(x[None, ...]) for x in boxes[0]], axis=1)
 
         return boxes, scores, labels
