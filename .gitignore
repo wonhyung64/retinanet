@@ -14,3 +14,5 @@ __pycache__/
 SLURM*
 .pyc
 model_weights/
+data/
+retinanet/
