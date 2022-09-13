@@ -731,6 +731,8 @@ epochs = 75
 # Running 100 training and 50 validation steps,
 # remove `.take` when training on the full dataset
 
+
+#%%
 model.fit(
     train_dataset,
     validation_data=val_dataset,
