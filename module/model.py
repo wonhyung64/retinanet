@@ -1,12 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import (
-    Layer,
-    Conv2D,
-    UpSampling2D,
-    ReLU,
-)
+from tensorflow.keras.layers import Layer, Conv2D, UpSampling2D, ReLU
+
+from .anchor import AnchorBox
+from .bbox import convert_to_corners
 
 
 def get_backbone():
@@ -37,6 +35,7 @@ class FeaturePyramid(Layer):
         self.conv_c6_3x3 = Conv2D(256, 3, 2, "same")
         self.conv_c7_3x3 = Conv2D(256, 3, 2, "same")
         self.upsample_2x = UpSampling2D(2)
+
 
     def call(self, images, training=False):
         c3_output, c4_output, c5_output = self.backbone(images, training=training)
@@ -87,6 +86,7 @@ class RetinaNet(Model):
         self.cls_head = build_head(9 * num_classes, prior_probability)
         self.box_head = build_head(9 * 4, "zeros")
 
+
     def call(self, image, training=False):
         features = self.fpn(image, training=training)
         N = tf.shape(image)[0]
@@ -99,6 +99,7 @@ class RetinaNet(Model):
             )
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
+
         return tf.concat([box_outputs, cls_outputs], axis=-1)
 
 
@@ -123,8 +124,9 @@ class DecodePredictions(tf.keras.layers.Layer):
 
         self._anchor_box = AnchorBox()
         self._box_variance = tf.convert_to_tensor(
-            [0.1, 0.1, 0.2, 0.2], dtype=tf.float32
+            box_variance, dtype=tf.float32
         )
+
 
     def _decode_box_predictions(self, anchor_boxes, box_predictions):
         boxes = box_predictions * self._box_variance
@@ -138,6 +140,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         boxes_transformed = convert_to_corners(boxes)
 
         return boxes_transformed
+
 
     def call(self, images, predictions):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
