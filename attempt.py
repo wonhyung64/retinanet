@@ -12,28 +12,12 @@ import tensorflow_datasets as tfds
 
 # %%
 def swap_xy(boxes):
-    """Swaps order the of x and y coordinates of the boxes.
-
-    Arguments:
-      boxes: A tensor with shape `(num_boxes, 4)` representing bounding boxes.
-
-    Returns:
-      swapped boxes with shape same as that of boxes.
-    """
+    
     return tf.stack([boxes[:, 1], boxes[:, 0], boxes[:, 3], boxes[:, 2]], axis=-1)
 
 
 def convert_to_xywh(boxes):
-    """Changes the box format to center, width and height.
 
-    Arguments:
-      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
-        representing bounding boxes where each box is of the format
-        `[xmin, ymin, xmax, ymax]`.
-
-    Returns:
-      converted boxes with shape same as that of boxes.
-    """
     return tf.concat(
         [(boxes[..., :2] + boxes[..., 2:]) / 2.0, boxes[..., 2:] - boxes[..., :2]],
         axis=-1,
@@ -41,16 +25,7 @@ def convert_to_xywh(boxes):
 
 
 def convert_to_corners(boxes):
-    """Changes the box format to corner coordinates
 
-    Arguments:
-      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
-        representing bounding boxes where each box is of the format
-        `[x, y, width, height]`.
-
-    Returns:
-      converted boxes with shape same as that of boxes.
-    """
     return tf.concat(
         [boxes[..., :2] - boxes[..., 2:] / 2.0, boxes[..., :2] + boxes[..., 2:] / 2.0],
         axis=-1,
@@ -58,19 +33,7 @@ def convert_to_corners(boxes):
 
 
 def compute_iou(boxes1, boxes2):
-    """Computes pairwise IOU matrix for given two sets of boxes
 
-    Arguments:
-      boxes1: A tensor with shape `(N, 4)` representing bounding boxes
-        where each box is of the format `[x, y, width, height]`.
-        boxes2: A tensor with shape `(M, 4)` representing bounding boxes
-        where each box is of the format `[x, y, width, height]`.
-
-    Returns:
-      pairwise IOU matrix with shape `(N, M)`, where the value at ith row
-        jth column holds the IOU between ith box and jth box from
-        boxes1 and boxes2 respectively.
-    """
     boxes1_corners = convert_to_corners(boxes1)
     boxes2_corners = convert_to_corners(boxes2)
     lu = tf.maximum(boxes1_corners[:, None, :2], boxes2_corners[:, :2])
@@ -88,7 +51,7 @@ def compute_iou(boxes1, boxes2):
 def visualize_detections(
     image, boxes, classes, scores, figsize=(7, 7), linewidth=1, color=[0, 0, 1]
 ):
-    """Visualize Detections"""
+
     image = np.array(image, dtype=np.uint8)
     plt.figure(figsize=figsize)
     plt.axis("off")
@@ -115,23 +78,6 @@ def visualize_detections(
 
 
 class AnchorBox:
-    """Generates anchor boxes.
-
-    This class has operations to generate anchor boxes for feature maps at
-    strides `[8, 16, 32, 64, 128]`. Where each anchor each box is of the
-    format `[x, y, width, height]`.
-
-    Attributes:
-      aspect_ratios: A list of float values representing the aspect ratios of
-        the anchor boxes at each location on the feature map
-      scales: A list of float values representing the scale of the anchor boxes
-        at each location on the feature map.
-      num_anchors: The number of anchor boxes at each location on feature map
-      areas: A list of float values representing the areas of the anchor
-        boxes for each feature map in the feature pyramid.
-      strides: A list of float value representing the strides for each feature
-        map in the feature pyramid.
-    """
 
     def __init__(self):
         self.aspect_ratios = [0.5, 1.0, 2.0]
@@ -209,17 +155,7 @@ class AnchorBox:
 
 
 def random_flip_horizontal(image, boxes):
-    """Flips image and boxes horizontally with 50% chance
-
-    Arguments:
-      image: A 3-D tensor of shape `(height, width, channels)` representing an
-        image.
-      boxes: A tensor with shape `(num_boxes, 4)` representing bounding boxes,
-        having normalized coordinates.
-
-    Returns:
-      Randomly flipped image and boxes
-    """
+    
     if tf.random.uniform(()) > 0.5:
         image = tf.image.flip_left_right(image)
         boxes = tf.stack(
@@ -231,33 +167,7 @@ def random_flip_horizontal(image, boxes):
 def resize_and_pad_image(
     image, min_side=800.0, max_side=1333.0, jitter=[640, 1024], stride=128.0
 ):
-    """Resizes and pads image while preserving aspect ratio.
-
-    1. Resizes images so that the shorter side is equal to `min_side`
-    2. If the longer side is greater than `max_side`, then resize the image
-      with longer side equal to `max_side`
-    3. Pad with zeros on right and bottom to make the image shape divisible by
-    `stride`
-
-    Arguments:
-      image: A 3-D tensor of shape `(height, width, channels)` representing an
-        image.
-      min_side: The shorter side of the image is resized to this value, if
-        `jitter` is set to None.
-      max_side: If the longer side of the image exceeds this value after
-        resizing, the image is resized such that the longer side now equals to
-        this value.
-      jitter: A list of floats containing minimum and maximum size for scale
-        jittering. If available, the shorter side of the image will be
-        resized to a random value in this range.
-      stride: The stride of the smallest feature map in the feature pyramid.
-        Can be calculated using `image_size / feature_map_size`.
-
-    Returns:
-      image: Resized and padded image.
-      image_shape: Shape of the image before padding.
-      ratio: The scaling factor used to resize the image
-    """
+    
     image_shape = tf.cast(tf.shape(image)[:2], dtype=tf.float32)
     if jitter is not None:
         min_side = tf.random.uniform((), jitter[0], jitter[1], dtype=tf.float32)
@@ -276,18 +186,7 @@ def resize_and_pad_image(
 
 
 def preprocess_data(sample):
-    """Applies preprocessing step to a single sample
-
-    Arguments:
-      sample: A dict representing a single training sample.
-
-    Returns:
-      image: Resized and padded image with random horizontal flipping applied.
-      bbox: Bounding boxes with the shape `(num_objects, 4)` where each box is
-        of the format `[x, y, width, height]`.
-      class_id: An tensor representing the class id of the objects, having
-        shape `(num_objects,)`.
-    """
+    
     image = sample["image"]
     bbox = swap_xy(sample["objects"]["bbox"])
     class_id = tf.cast(sample["objects"]["label"], dtype=tf.int32)
@@ -309,16 +208,6 @@ def preprocess_data(sample):
 
 
 class LabelEncoder:
-    """Transforms the raw labels into targets for training.
-
-    This class has operations to generate targets for a batch of samples which
-    is made up of the input images, bounding boxes for the objects present and
-    their class ids.
-
-    Attributes:
-      anchor_box: Anchor box generator to encode the bounding boxes.
-      box_variance: The scaling factors used to scale the bounding box targets.
-    """
 
     def __init__(self):
         self._anchor_box = AnchorBox()
@@ -329,36 +218,6 @@ class LabelEncoder:
     def _match_anchor_boxes(
         self, anchor_boxes, gt_boxes, match_iou=0.5, ignore_iou=0.4
     ):
-        """Matches ground truth boxes to anchor boxes based on IOU.
-
-        1. Calculates the pairwise IOU for the M `anchor_boxes` and N `gt_boxes`
-          to get a `(M, N)` shaped matrix.
-        2. The ground truth box with the maximum IOU in each row is assigned to
-          the anchor box provided the IOU is greater than `match_iou`.
-        3. If the maximum IOU in a row is less than `ignore_iou`, the anchor
-          box is assigned with the background class.
-        4. The remaining anchor boxes that do not have any class assigned are
-          ignored during training.
-
-        Arguments:
-          anchor_boxes: A float tensor with the shape `(total_anchors, 4)`
-            representing all the anchor boxes for a given input image shape,
-            where each anchor box is of the format `[x, y, width, height]`.
-          gt_boxes: A float tensor with shape `(num_objects, 4)` representing
-            the ground truth boxes, where each box is of the format
-            `[x, y, width, height]`.
-          match_iou: A float value representing the minimum IOU threshold for
-            determining if a ground truth box can be assigned to an anchor box.
-          ignore_iou: A float value representing the IOU threshold under which
-            an anchor box is assigned to the background class.
-
-        Returns:
-          matched_gt_idx: Index of the matched object
-          positive_mask: A mask for anchor boxes that have been assigned ground
-            truth boxes.
-          ignore_mask: A mask for anchor boxes that need to by ignored during
-            training
-        """
         iou_matrix = compute_iou(anchor_boxes, gt_boxes)
         max_iou = tf.reduce_max(iou_matrix, axis=1)
         matched_gt_idx = tf.argmax(iou_matrix, axis=1)
@@ -372,7 +231,6 @@ class LabelEncoder:
         )
 
     def _compute_box_target(self, anchor_boxes, matched_gt_boxes):
-        """Transforms the ground truth boxes into targets for training"""
         box_target = tf.concat(
             [
                 (matched_gt_boxes[:, :2] - anchor_boxes[:, :2]) / anchor_boxes[:, 2:],
@@ -384,7 +242,6 @@ class LabelEncoder:
         return box_target
 
     def _encode_sample(self, image_shape, gt_boxes, cls_ids):
-        """Creates box and classification targets for a single sample"""
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
         cls_ids = tf.cast(cls_ids, dtype=tf.float32)
         matched_gt_idx, positive_mask, ignore_mask = self._match_anchor_boxes(
@@ -402,7 +259,6 @@ class LabelEncoder:
         return label
 
     def encode_batch(self, batch_images, gt_boxes, cls_ids):
-        """Creates box and classification targets for a batch"""
         images_shape = tf.shape(batch_images)
         batch_size = images_shape[0]
 
@@ -415,7 +271,6 @@ class LabelEncoder:
 
 
 def get_backbone():
-    """Builds ResNet50 with pre-trained imagenet weights"""
     backbone = keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
@@ -423,19 +278,13 @@ def get_backbone():
         backbone.get_layer(layer_name).output
         for layer_name in ["conv3_block4_out", "conv4_block6_out", "conv5_block3_out"]
     ]
+
     return keras.Model(
         inputs=[backbone.inputs], outputs=[c3_output, c4_output, c5_output]
     )
 
 
 class FeaturePyramid(keras.layers.Layer):
-    """Builds the Feature Pyramid with the feature maps from the backbone.
-
-    Attributes:
-      num_classes: Number of classes in the dataset.
-      backbone: The backbone to build the feature pyramid from.
-        Currently supports ResNet50 only.
-    """
 
     def __init__(self, backbone=None, **kwargs):
         super(FeaturePyramid, self).__init__(name="FeaturePyramid", **kwargs)
@@ -462,20 +311,11 @@ class FeaturePyramid(keras.layers.Layer):
         p5_output = self.conv_c5_3x3(p5_output)
         p6_output = self.conv_c6_3x3(c5_output)
         p7_output = self.conv_c7_3x3(tf.nn.relu(p6_output))
+
         return p3_output, p4_output, p5_output, p6_output, p7_output
 
 
 def build_head(output_filters, bias_init):
-    """Builds the class/box predictions head.
-
-    Arguments:
-      output_filters: Number of convolution filters in the final layer.
-      bias_init: Bias Initializer for the final convolution layer.
-
-    Returns:
-      A keras sequential model representing either the classification
-        or the box regression head depending on `output_filters`.
-    """
     head = keras.Sequential([keras.Input(shape=[None, None, 256])])
     kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
     for _ in range(4):
@@ -493,6 +333,7 @@ def build_head(output_filters, bias_init):
             bias_initializer=bias_init,
         )
     )
+
     return head
 
 
@@ -530,20 +371,6 @@ class RetinaNet(keras.Model):
 
 
 class DecodePredictions(tf.keras.layers.Layer):
-    """A Keras layer that decodes predictions of the RetinaNet model.
-
-    Attributes:
-      num_classes: Number of classes in the dataset
-      confidence_threshold: Minimum class probability, below which detections
-        are pruned.
-      nms_iou_threshold: IOU threshold for the NMS operation
-      max_detections_per_class: Maximum number of detections to retain per
-       class.
-      max_detections: Maximum number of detections to retain across all
-        classes.
-      box_variance: The scaling factors used to scale the bounding box
-        predictions.
-    """
 
     def __init__(
         self,
@@ -577,6 +404,7 @@ class DecodePredictions(tf.keras.layers.Layer):
             axis=-1,
         )
         boxes_transformed = convert_to_corners(boxes)
+
         return boxes_transformed
 
     def call(self, images, predictions):
@@ -615,11 +443,11 @@ class RetinaNetBoxLoss(tf.losses.Loss):
             0.5 * squared_difference,
             absolute_difference - 0.5,
         )
+
         return tf.reduce_sum(loss, axis=-1)
 
 
 class RetinaNetClassificationLoss(tf.losses.Loss):
-    """Implements Focal loss"""
 
     def __init__(self, alpha, gamma):
         super(RetinaNetClassificationLoss, self).__init__(
@@ -640,7 +468,6 @@ class RetinaNetClassificationLoss(tf.losses.Loss):
 
 
 class RetinaNetLoss(tf.losses.Loss):
-    """Wrapper to combine both the losses"""
 
     def __init__(self, num_classes=80, alpha=0.25, gamma=2.0, delta=1.0):
         super(RetinaNetLoss, self).__init__(reduction="auto", name="RetinaNetLoss")
@@ -668,6 +495,7 @@ class RetinaNetLoss(tf.losses.Loss):
         clf_loss = tf.math.divide_no_nan(tf.reduce_sum(clf_loss, axis=-1), normalizer)
         box_loss = tf.math.divide_no_nan(tf.reduce_sum(box_loss, axis=-1), normalizer)
         loss = clf_loss + box_loss
+
         return loss
 
 
@@ -703,7 +531,7 @@ callbacks_list = [
 ]
 
 (train_dataset, val_dataset), dataset_info = tfds.load(
-    "voc/2007", split=["train", "validation"], with_info=True, data_dir = "/home1/wonhyung64/data/tfds"
+    "voc/2007", split=["train", "validation"], with_info=True, data_dir = "/Users/wonhyung64/data/tfds"
 )
 
 autotune = tf.data.AUTOTUNE
@@ -740,9 +568,9 @@ model.fit(
     callbacks=callbacks_list,
     verbose=1,
 )
+
 # %%
-'''
-weights_dir = "data"
+weights_dir = "./retinanet"
 os.makedirs(weights_dir, exist_ok=True)
 
 latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
@@ -759,21 +587,21 @@ def prepare_image(image):
     return tf.expand_dims(image, axis=0), ratio
 
 
-val_dataset = tfds.load("coco/2017", split="validation", data_dir="data")
+val_dataset = tfds.load("voc/2007", split="validation", data_dir="/Users/wonhyung64/data/tfds")
 int2str = dataset_info.features["objects"]["label"].int2str
+val_dataset = iter(val_dataset)
 
-for sample in val_dataset.take(2):
-    image = tf.cast(sample["image"], dtype=tf.float32)
-    input_image, ratio = prepare_image(image)
-    detections = inference_model.predict(input_image)
-    num_detections = detections.valid_detections[0]
-    class_names = [
-        int2str(int(x)) for x in detections.nmsed_classes[0][:num_detections]
-    ]
-    visualize_detections(
-        image,
-        detections.nmsed_boxes[0][:num_detections] / ratio,
-        class_names,
-        detections.nmsed_scores[0][:num_detections],
-    )
-'''
+sample = next(val_dataset)
+image = tf.cast(sample["image"], dtype=tf.float32)
+input_image, ratio = prepare_image(image)
+detections = inference_model.predict(input_image)
+num_detections = detections.valid_detections[0]
+class_names = [
+    int2str(int(x)) for x in detections.nmsed_classes[0][:num_detections]
+]
+visualize_detections(
+    image,
+    detections.nmsed_boxes[0][:num_detections] / ratio,
+    class_names,
+    detections.nmsed_scores[0][:num_detections],
+)
