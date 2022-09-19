@@ -15,7 +15,7 @@ def build_model(total_labels):
     resnet50_backbone = get_backbone()
     model = RetinaNet(total_labels, resnet50_backbone)
 
-    return model, loss_fn
+    return model
 
 
 def build_optimizer(batch_size, data_num):
