@@ -1,5 +1,6 @@
 #%%
 import os
+import argparse
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -9,44 +10,64 @@ from module.loss import RetinaNetLoss
 from module.preprocess import preprocess_data
 from module.utils import prepare_image, visualize_detections
 
-#%%
-model_dir = "retinanet/"
-os.makedirs(model_dir, exist_ok=True)
-label_encoder = LabelEncoder()
 
-num_classes = 20
-batch_size = 2
+def build_model(total_labels):
+    resnet50_backbone = get_backbone()
+    model = RetinaNet(total_labels, resnet50_backbone)
 
-learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
-learning_rate_boundaries = [125, 250, 500, 240000, 360000]
-learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
-    boundaries=learning_rate_boundaries, values=learning_rates
-)
+    return model, loss_fn
 
-resnet50_backbone = get_backbone()
-loss_fn = RetinaNetLoss(num_classes)
-model = RetinaNet(num_classes, resnet50_backbone)
 
-optimizer = tf.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
-model.compile(loss=loss_fn, optimizer=optimizer)
-
-callbacks_list = [
-    tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(model_dir, "weights" + "_epoch_{epoch}"),
-        monitor="loss",
-        save_best_only=True,
-        save_weights_only=True,
-        verbose=1,
+def build_optimizer(batch_size, data_num):
+    boundaries = [data_num // batch_size * epoch for epoch in (1, 50, 60, 70)]
+    values = [1e-5, 1e-3, 1e-4, 1e-6, 1e-7]
+    learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
+        boundaries=boundaries, values=values
     )
-]
+    optimizer = tf.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
 
+    return optimizer
+
+
+def build_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name", type=str, default="voc/2007")
+    parser.add_argument("--epochs", type=int, default=75)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--data-dir", type=str, default="/Users/wonhyung64/data")
+    parser.add_argument("--img-size", nargs="+", type=int, default=[512, 512])
+    parser.add_argument(
+        "--variances", nargs="+", type=float, default=[0.1, 0.1, 0.2, 0.2]
+    )
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--weights-decay", type=float, default=1e-4)
+    parser.add_argument("--alpha", type=float, default=0.25)
+    parser.add_argument("--gamma", type=float, default=2.0)
+    parser.add_argument("--delta", type=float, default=1.0)
+    parser.add_argument("--prob_init", type=float, default=0.01)
+
+    try:
+        args = parser.parse_args()
+    except:
+        args = parser.parse_args([])
+
+    return args
+
+
+#%%
+args = build_args()
+epochs = args.epochs
+batch_size = args.batch_size
+data_dir = args.data_dir
+
+
+label_encoder = LabelEncoder()
 (train_dataset, val_dataset), dataset_info = tfds.load(
-    "voc/2007", split=["train", "validation"], with_info=True, data_dir = "/home1/wonhyung64/data/tfds"
+    "voc/2007", split=["train", "validation"], with_info=True, data_dir = f"{data_dir}/tfds"
 )
 
 autotune = tf.data.AUTOTUNE
 train_dataset = train_dataset.map(preprocess_data, num_parallel_calls=autotune)
-train_dataset = train_dataset.shuffle(8 * batch_size)
 train_dataset = train_dataset.padded_batch(
     batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True
 )
@@ -64,8 +85,27 @@ val_dataset = val_dataset.map(label_encoder.encode_batch, num_parallel_calls=aut
 val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
 val_dataset = val_dataset.prefetch(autotune)
 
-epochs = 75
+labels = dataset_info.features["objects"]["label"].names
+total_labels = len(labels)
 
+model_dir = "retinanet/"
+os.makedirs(model_dir, exist_ok=True)
+
+model = build_model(total_labels)
+loss_fn = RetinaNetLoss(total_labels)
+
+optimizer = build_optimizer(batch_size, data_num=4500)
+model.compile(loss=loss_fn, optimizer=optimizer)
+
+callbacks_list = [
+    tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(model_dir, "weights" + "_epoch_{epoch}"),
+        monitor="loss",
+        save_best_only=True,
+        save_weights_only=True,
+        verbose=1,
+    )
+]
 
 #%%
 model.fit(
@@ -79,7 +119,6 @@ model.fit(
 # %%
 '''
 weights_dir = "./retinanet"
-os.makedirs(weights_dir, exist_ok=True)
 
 latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
 model.load_weights(latest_checkpoint)
@@ -109,3 +148,5 @@ visualize_detections(
     detections.nmsed_scores[0][:num_detections],
 )
 '''
+# %%
+
