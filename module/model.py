@@ -36,7 +36,7 @@ class FeaturePyramid(Layer):
         self.conv_c7_3x3 = Conv2D(256, 3, 2, "same")
         self.upsample_2x = UpSampling2D(2)
 
-
+    @tf.function
     def call(self, images, training=False):
         c3_output, c4_output, c5_output = self.backbone(images, training=training)
         p3_output = self.conv_c3_1x1(c3_output)
@@ -87,6 +87,7 @@ class RetinaNet(Model):
         self.box_head = build_head(9 * 4, "zeros")
 
 
+    @tf.function
     def call(self, image, training=False):
         features = self.fpn(image, training=training)
         N = tf.shape(image)[0]
@@ -142,6 +143,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         return boxes_transformed
 
 
+    @tf.function
     def call(self, images, predictions):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])

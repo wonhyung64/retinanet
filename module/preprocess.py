@@ -35,8 +35,7 @@ def resize_and_pad_image(
     return image, image_shape, ratio
 
 
-def preprocess_data(sample):
-    
+def preprocess_train(sample):
     image = sample["image"]
     bbox = swap_xy(sample["objects"]["bbox"])
     class_id = tf.cast(sample["objects"]["label"], dtype=tf.int32)
@@ -56,3 +55,15 @@ def preprocess_data(sample):
     bbox = convert_to_xywh(bbox)
 
     return image, bbox, class_id
+
+
+def preprocess_test(sample):
+    image = tf.cast(sample["image"], dtype=tf.float32)
+    bbox = swap_xy(sample["objects"]["bbox"])
+    class_id = tf.cast(sample["objects"]["label"], dtype=tf.int32)
+
+    input_image, _, ratio = resize_and_pad_image(image, jitter=None)
+    input_image = tf.keras.applications.resnet.preprocess_input(input_image)
+    input_image = tf.expand_dims(input_image, axis=0)
+
+    return image, bbox, class_id, input_image, ratio
