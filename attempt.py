@@ -19,15 +19,10 @@ def build_model(total_labels):
 
 
 def build_optimizer(batch_size, data_num):
-    # boundaries = [data_num // batch_size * epoch for epoch in (1, 50, 60, 70)]
-    # values = [1e-5, 1e-3, 1e-4, 1e-6, 1e-7]
-    # learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
-    #     boundaries=boundaries, values=values
-    # )
-    learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
-    learning_rate_boundaries = [125, 250, 500, 240000, 360000]
+    boundaries = [data_num // batch_size * epoch for epoch in (1, 50, 60, 70)]
+    values = [1e-5, 1e-3, 1e-4, 1e-6, 1e-7]
     learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
-        boundaries=learning_rate_boundaries, values=learning_rates
+        boundaries=boundaries, values=values
     )
 
     optimizer = tf.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
@@ -202,6 +197,7 @@ model.fit(
 )
 
 # %%
+'''
 weights_dir = "./retinanet"
 
 latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
@@ -225,5 +221,4 @@ visualize_detections(
     class_names,
     detections.nmsed_scores[0][:num_detections],
 )
-
-# %%
+'''
