@@ -156,8 +156,8 @@ def build_dataset(datasets, batch_size):
     test_set = test_set.apply(tf.data.experimental.ignore_errors())
     test_set = test_set.prefetch(autotune)
 
-    train_set = iter(train_set)
-    valid_set = iter(valid_set)
+    # train_set = iter(train_set)
+    # valid_set = iter(valid_set)
     test_set = iter(test_set)
 
     return train_set, valid_set, test_set
