@@ -4,7 +4,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Layer, Conv2D, UpSampling2D, ReLU
 
 from .anchor import AnchorBox
-from .bbox import convert_to_corners
+from .bbox import convert_to_corners, swap_xy
 
 
 def get_backbone():
@@ -144,14 +144,14 @@ class DecodePredictions(tf.keras.layers.Layer):
 
 
     @tf.function
-    def call(self, images, predictions):
+    def call(self, images, predictions, ratio):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
         box_predictions = predictions[:, :, :4]
         cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
 
-        return tf.image.combined_non_max_suppression(
+        final_bboxes, final_labels, final_scores, _ =  tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
             self.max_detections_per_class,
@@ -160,3 +160,6 @@ class DecodePredictions(tf.keras.layers.Layer):
             self.confidence_threshold,
             clip_boxes=False,
         )
+        final_bboxes = tf.expand_dims(swap_xy(final_bboxes[0]), axis=0) / ratio
+
+        return (final_bboxes, final_labels, final_scores)
