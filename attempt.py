@@ -3,6 +3,7 @@ import os
 import argparse
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from PIL import ImageDraw
 
 from module.target import LabelEncoder
 from module.model import get_backbone, RetinaNet, DecodePredictions
@@ -157,6 +158,46 @@ def build_dataset(datasets, batch_size):
 
     return train_set, valid_set, test_set
 
+
+def build_detector(weights_dir, total_labels):
+    model = build_model(total_labels)
+    latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
+    model.load_weights(latest_checkpoint)
+
+    input = tf.keras.Input(shape=[None, None, 3], name="image")
+    predictions = model(input, training=False)
+    detections = DecodePredictions(confidence_threshold=0.5)(input, predictions, ratio)
+    inference_model = tf.keras.Model(inputs=input, outputs=detections)
+
+    return inference_model
+
+
+def draw_output(
+    image,
+    final_bboxes,
+    final_labels,
+    final_scores,
+    labels,
+    colors,
+):
+    image = tf.keras.preprocessing.image.array_to_img(image)
+    draw = ImageDraw.Draw(image)
+
+    idx = final_labels != 0
+    final_bboxes = final_bboxes[idx]
+    final_labels = final_labels[idx]
+    final_scores = final_scores[idx]
+
+    for index, bbox in enumerate(final_bboxes):
+        y1, x1, y2, x2 = tf.split(bbox, 4, axis=-1)
+        label_index = int(final_labels[index])
+        color = tuple(colors[label_index].numpy())
+        label_text = "{0} {1:0.3f}".format(labels.names[label_index], final_scores[index])
+        draw.text((x1 + 4, y1 + 2), label_text, fill=color)
+        draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
+
+    return image
+
 #%%
 model_dir = "retinanet/"
 os.makedirs(model_dir, exist_ok=True)
@@ -197,28 +238,21 @@ model.fit(
 )
 
 # %%
-'''
 weights_dir = "./retinanet"
+model = build_detector(weights_dir, total_labels)
 
+
+model = build_model(total_labels)
 latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
 model.load_weights(latest_checkpoint)
-
-image = tf.keras.Input(shape=[None, None, 3], name="image")
-predictions = model(image, training=False)
-detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
-inference_model = tf.keras.Model(inputs=image, outputs=detections)
-int2str = labels.int2str
-
+#%%
+colors = tf.random.uniform((labels.num_classes, 4), maxval=256, dtype=tf.int32)
+decoder = DecodePredictions(confidence_threshold=0.5)
 image, bbox, class_id, input_image, ratio = next(test_set)
-detections = inference_model.predict(input_image)
-num_detections = detections.valid_detections[0]
-class_names = [
-    int2str(int(x)) for x in detections.nmsed_classes[0][:num_detections]
-]
-visualize_detections(
-    image,
-    detections.nmsed_boxes[0][:num_detections] / ratio,
-    class_names,
-    detections.nmsed_scores[0][:num_detections],
-)
-'''
+predictions = model(input_image, training=False)
+final_bboxes, final_scores, final_labels = decoder(input_image, predictions, ratio)
+draw_output(image, final_bboxes, final_labels, final_scores, labels, colors)
+
+
+
+# %%
