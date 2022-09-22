@@ -56,19 +56,20 @@ class LabelEncoder:
         )
         cls_target = tf.where(tf.equal(ignore_mask, 1.0), -2.0, cls_target)
         cls_target = tf.expand_dims(cls_target, axis=-1)
-        label = tf.concat([box_target, cls_target], axis=-1)
 
-        return label
+        return box_target, cls_target
 
 
     def encode_batch(self, batch_images, gt_boxes, cls_ids):
         images_shape = tf.shape(batch_images)
         batch_size = images_shape[0]
 
-        labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
+        box_labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
+        cls_labels = tf.TensorArray(dtype=tf.float32, size=batch_size, dynamic_size=True)
         for i in range(batch_size):
-            label = self._encode_sample(images_shape, gt_boxes[i], cls_ids[i])
-            labels = labels.write(i, label)
+            box_target, cls_target = self._encode_sample(images_shape, gt_boxes[i], cls_ids[i])
+            box_labels = box_labels.write(i, box_target)
+            cls_labels = cls_labels.write(i, cls_target)
         batch_images = tf.keras.applications.resnet.preprocess_input(batch_images)
 
-        return batch_images, labels.stack()
+        return batch_images, (box_labels.stack(), tf.squeeze(cls_labels.stack(), axis=-1))

@@ -121,7 +121,7 @@ class RetinaNet(Model):
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
 
-        return tf.concat([box_outputs, cls_outputs], axis=-1)
+        return (box_outputs, cls_outputs)
 
 
 class DecodePredictions(tf.keras.layers.Layer):

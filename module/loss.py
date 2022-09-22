@@ -10,6 +10,7 @@ class RetinaNetBoxLoss(Loss):
         )
         self._delta = delta
 
+    @tf.function
     def call(self, y_true, y_pred):
         difference = y_true - y_pred
         absolute_difference = tf.abs(difference)
@@ -32,6 +33,7 @@ class RetinaNetClassificationLoss(Loss):
         self._alpha = alpha
         self._gamma = gamma
 
+    @tf.function
     def call(self, y_true, y_pred):
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=y_true, logits=y_pred
@@ -75,18 +77,19 @@ class RetinaNetLoss(Loss):
         return box_loss, clf_loss
 
 def compute_loss(y_true, y_pred, box_loss_fn, clf_loss_fn, num_classes=20):
-    box_labels = y_true[..., :4]
-    box_predictions = y_pred[..., :4]
+    box_pred, cls_pred = y_pred
+    box_true, cls_true = y_true
+
     cls_labels = tf.one_hot(
-        tf.cast(y_true[..., 4], dtype=tf.int32),
+        tf.cast(cls_true, dtype=tf.int32),
         depth=num_classes,
         dtype=tf.float32,
     )
-    cls_predictions = y_pred[..., 4:]
-    positive_mask = tf.cast(tf.greater(y_true[..., 4], -1.0), dtype=tf.float32)
-    ignore_mask = tf.cast(tf.equal(y_true[..., 4], -2.0), dtype=tf.float32)
-    clf_loss = clf_loss_fn(cls_labels, cls_predictions)
-    box_loss = box_loss_fn(box_labels, box_predictions)
+    
+    positive_mask = tf.cast(tf.greater(cls_true, -1.0), dtype=tf.float32)
+    ignore_mask = tf.cast(tf.equal(cls_true, -2.0), dtype=tf.float32)
+    clf_loss = clf_loss_fn(cls_labels, cls_pred)
+    box_loss = box_loss_fn(box_true, box_pred)
     clf_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, clf_loss)
     box_loss = tf.where(tf.equal(positive_mask, 1.0), box_loss, 0.0)
     normalizer = tf.reduce_sum(positive_mask, axis=-1)
