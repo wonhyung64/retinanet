@@ -1,5 +1,5 @@
 #%%
-from module_old.variable import (
+from module.variable import (
     NEPTUNE_API_KEY,
     NEPTUNE_PROJECT,
 )

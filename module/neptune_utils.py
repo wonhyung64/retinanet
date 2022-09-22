@@ -1,6 +1,5 @@
 import sys
 import subprocess
-
 try:
     import neptune.new as neptune
 except:
@@ -14,16 +13,15 @@ def plugin_neptune(NEPTUNE_API_KEY, NEPTUNE_PROJECT, args):
         api_token=NEPTUNE_API_KEY,
         mode="async",
     )
-
     run["sys/name"] = "retinanet-optimization"
     run["sys/tags"].add([f"{key}: {value}" for key, value in args._get_kwargs()])
 
     return run
 
 
-def record_train_loss(run, reg_loss, cls_loss, total_loss):
-    run["train/loss/reg_loss"].log(reg_loss.numpy())
-    run["train/loss/cls_loss"].log(cls_loss.numpy())
+def record_train_loss(run, box_loss, clf_loss, total_loss):
+    run["train/loss/box_loss"].log(box_loss.numpy())
+    run["train/loss/clf_loss"].log(clf_loss.numpy())
     run["train/loss/total_loss"].log(total_loss.numpy())
 
 
@@ -34,5 +32,4 @@ def record_result(run, weights_dir, train_time, mean_ap, mean_test_time):
         "inference_time": "%.2fms" % (mean_test_time.numpy()),
     }
     run["results"] = res
-    run["rpn_model"].upload(f"{weights_dir}_rpn.h5")
-    run["dtn_model"].upload(f"{weights_dir}_dtn.h5")
+    run["model"].upload(f"{weights_dir}.h5")

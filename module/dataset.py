@@ -89,11 +89,7 @@ def build_dataset(datasets, batch_size):
     train_set = train_set.apply(tf.data.experimental.ignore_errors())
     train_set = train_set.prefetch(autotune)
 
-    valid_set = valid_set.map(preprocess_train, num_parallel_calls=autotune)
-    valid_set = valid_set.padded_batch(
-        batch_size=1, padding_values=(0.0, 1e-8, -1), drop_remainder=True
-    )
-    valid_set = valid_set.map(label_encoder.encode_batch, num_parallel_calls=autotune)
+    valid_set = valid_set.map(preprocess_test, num_parallel_calls=autotune)
     valid_set = valid_set.apply(tf.data.experimental.ignore_errors())
     valid_set = valid_set.prefetch(autotune)
 
@@ -101,8 +97,8 @@ def build_dataset(datasets, batch_size):
     test_set = test_set.apply(tf.data.experimental.ignore_errors())
     test_set = test_set.prefetch(autotune)
 
-    # train_set = iter(train_set)
-    # valid_set = iter(valid_set)
+    train_set = iter(train_set)
+    valid_set = iter(valid_set)
     test_set = iter(test_set)
 
     return train_set, valid_set, test_set

@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Layer, Conv2D, UpSampling2D, ReLU
+from tensorflow.keras.layers import Layer, Conv2D, ReLU
 from .anchor import AnchorBox
 from .bbox import convert_to_corners, swap_xy
 
@@ -40,7 +40,7 @@ class FeaturePyramid(Layer):
         self.conv_c5_3x3 = Conv2D(256, 3, 1, "same")
         self.conv_c6_3x3 = Conv2D(256, 3, 2, "same")
         self.conv_c7_3x3 = Conv2D(256, 3, 2, "same")
-        self.upsample_2x = UpSampling2D(2)
+        self.upsample_2x = CustomUpSampling2D(2)
 
     @tf.function
     def call(self, images, training=False):
@@ -79,6 +79,20 @@ def build_head(output_filters, bias_init):
     )
 
     return head
+
+
+class CustomUpSampling2D(tf.keras.layers.Layer):
+    def __init__(self, size):
+        super(CustomUpSampling2D, self).__init__()
+        if type(size) is not tuple and type(size) is not list:
+            size = (size, size)
+        self.size = size
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, input):
+        return tf.repeat(tf.repeat(input, self.size[0], axis=1), self.size[1], axis=2)
 
 
 class RetinaNet(Model):
