@@ -59,7 +59,7 @@ def preprocess_train(sample):
 
 def preprocess_test(sample):
     image = tf.cast(sample["image"], dtype=tf.float32)
-    bbox = swap_xy(sample["objects"]["bbox"])
+    bbox = sample["objects"]["bbox"]
     class_id = tf.cast(sample["objects"]["label"], dtype=tf.int32)
 
     input_image, _, ratio = resize_and_pad_image(image, jitter=None)

@@ -2,9 +2,15 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Layer, Conv2D, UpSampling2D, ReLU
-
 from .anchor import AnchorBox
 from .bbox import convert_to_corners, swap_xy
+
+
+def build_model(total_labels):
+    resnet50_backbone = get_backbone()
+    model = RetinaNet(total_labels, resnet50_backbone)
+
+    return model
 
 
 def get_backbone():
@@ -144,13 +150,13 @@ class DecodePredictions(tf.keras.layers.Layer):
 
 
     @tf.function
-    def call(self, images, predictions, ratio):
+    def call(self, images, predictions, ratio, img_size):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
         box_predictions = predictions[:, :, :4]
         cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
-
+        
         final_bboxes, final_labels, final_scores, _ =  tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
             cls_predictions,
@@ -162,4 +168,12 @@ class DecodePredictions(tf.keras.layers.Layer):
         )
         final_bboxes = tf.expand_dims(swap_xy(final_bboxes[0]), axis=0) / ratio
 
-        return (final_bboxes, final_labels, final_scores)
+        idx = final_scores != 0
+        final_bboxes = final_bboxes[idx]
+        final_labels = final_labels[idx]
+        final_scores = final_scores[idx]
+
+        hw = tf.cast(tf.tile(img_size, [2]), dtype=tf.float32)
+        scaled_bboxes = final_bboxes / hw
+
+        return (scaled_bboxes, final_bboxes, final_labels, final_scores)
