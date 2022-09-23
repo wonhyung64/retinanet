@@ -14,7 +14,7 @@ def build_optimizer(batch_size, data_num):
     return optimizer
 
 
-# @tf.function
+@tf.function
 def forward_backward(
     input_img,
     true,

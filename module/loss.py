@@ -10,7 +10,7 @@ class RetinaNetBoxLoss(Loss):
         )
         self._delta = delta
 
-    # @tf.function
+    @tf.function
     def call(self, y_true, y_pred):
         difference = y_true - y_pred
         absolute_difference = tf.abs(difference)
@@ -33,7 +33,7 @@ class RetinaNetClassificationLoss(Loss):
         self._alpha = alpha
         self._gamma = gamma
 
-    # @tf.function
+    @tf.function
     def call(self, y_true, y_pred):
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(
             labels=y_true, logits=y_pred
