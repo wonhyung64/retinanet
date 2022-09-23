@@ -9,6 +9,8 @@ from .bbox import convert_to_corners, swap_xy
 def build_model(total_labels):
     resnet50_backbone = get_backbone()
     model = RetinaNet(total_labels, resnet50_backbone)
+    input_shape = [None, None, None, 3]
+    model.build(input_shape=input_shape)
 
     return model
 
@@ -167,8 +169,8 @@ class DecodePredictions(tf.keras.layers.Layer):
     def call(self, images, predictions, ratio, img_size):
         image_shape = tf.cast(tf.shape(images), dtype=tf.float32)
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
-        box_predictions = predictions[:, :, :4]
-        cls_predictions = tf.nn.sigmoid(predictions[:, :, 4:])
+        box_predictions, cls_predictions = predictions
+        cls_predictions = tf.nn.sigmoid(cls_predictions)
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
         
         final_bboxes, final_labels, final_scores, _ =  tf.image.combined_non_max_suppression(

@@ -26,10 +26,7 @@ def forward_backward(
 ):
     with tf.GradientTape(persistent=True) as tape:
         pred = model(input_img)
-        box_loss, clf_loss = compute_loss(true, pred, box_loss_fn, clf_loss_fn, num_classes)
-        box_loss = tf.reduce_mean(box_loss)
-        clf_loss = tf.reduce_mean(clf_loss)
-        total_loss = box_loss + clf_loss
+        box_loss, clf_loss, total_loss = compute_loss(true, pred, box_loss_fn, clf_loss_fn, num_classes)
 
     grads = tape.gradient(total_loss, model.trainable_weights)
     optimizer.apply_gradients(zip(grads, model.trainable_weights))

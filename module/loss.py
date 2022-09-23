@@ -95,5 +95,8 @@ def compute_loss(y_true, y_pred, box_loss_fn, clf_loss_fn, num_classes=20):
     normalizer = tf.reduce_sum(positive_mask, axis=-1)
     clf_loss = tf.math.divide_no_nan(tf.reduce_sum(clf_loss, axis=-1), normalizer)
     box_loss = tf.math.divide_no_nan(tf.reduce_sum(box_loss, axis=-1), normalizer)
+    clf_loss = tf.reduce_mean(clf_loss)
+    box_loss = tf.reduce_mean(box_loss)
+    total_loss = box_loss + clf_loss
 
-    return box_loss, clf_loss
+    return box_loss, clf_loss, total_loss

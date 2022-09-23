@@ -31,6 +31,8 @@ model.load_weights(f"{weights_dir}.h5")
 mean_ap, mean_evaltime = evaluate(run, test_set, test_num, model, decoder, labels, "test")
 record_result(run, weights_dir, train_time, mean_ap, mean_evaltime)
 
+
+
 # %%
 '''
 from module.optimize import forward_backward
