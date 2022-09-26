@@ -1,7 +1,7 @@
 import tensorflow as tf
 from module.model import build_model, DecodePredictions
 from module.dataset import load_dataset, build_dataset
-from module.neptune_utils import record_result
+from module.neptune import record_result
 from module.optimize import build_optimizer
 from module.loss import RetinaNetBoxLoss, RetinaNetClassificationLoss
 from module.utils import initialize_process, train, evaluate
@@ -13,13 +13,13 @@ def main():
 
     datasets, labels, train_num, valid_num, test_num = load_dataset(args.name, args.data_dir)
     train_set, valid_set, test_set = build_dataset(datasets, args.batch_size)
+    colors = tf.random.uniform((labels.num_classes, 4), maxval=256, dtype=tf.int32)
 
     model = build_model(labels.num_classes)
     decoder = DecodePredictions(confidence_threshold=0.5)
     box_loss_fn = RetinaNetBoxLoss(args.delta)
     clf_loss_fn = RetinaNetClassificationLoss(args.alpha, args.gamma)
     optimizer = build_optimizer(args.batch_size, train_num, args.momentum)
-    colors = tf.random.uniform((labels.num_classes, 4), maxval=256, dtype=tf.int32)
 
     train_time = train(run, args.epochs, args.batch_size,
         train_num, valid_num, train_set, valid_set, labels,

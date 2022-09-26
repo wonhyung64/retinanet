@@ -4,7 +4,7 @@ import tensorflow as tf
 import neptune.new as neptune
 from tqdm import tqdm
 from .args import build_args
-from .neptune_utils import plugin_neptune, record_train_loss
+from .neptune import plugin_neptune, record_train_loss
 from .optimize import forward_backward
 from .ap import calculate_ap_const
 from .draw import draw_output
