@@ -29,6 +29,5 @@ def main():
     mean_ap, mean_evaltime = evaluate(run, test_set, test_num, model, decoder, labels, "test", colors)
     record_result(run, weights_dir, train_time, mean_ap, mean_evaltime)
 
-
 if __name__ == "__main__":
     main()
