@@ -42,7 +42,7 @@ def train(
 ):
     best_mean_ap = 0
     start_time = time.time()
-    num_classes = labels.num_classes
+    num_classes = len(labels)
     for epoch in range(epochs):
         epoch_progress = tqdm(range(train_num // batch_size))
         for _ in epoch_progress:
@@ -85,7 +85,7 @@ def evaluate(run, dataset, dataset_num, model, decoder, labels, split, colors=No
         eval_time = time.time() - start_time
         eval_times.append(eval_time)
 
-        ap = calculate_ap_const(scaled_bboxes, final_labels, gt_boxes, gt_labels, labels.num_classes)
+        ap = calculate_ap_const(scaled_bboxes, final_labels, gt_boxes, gt_labels, len(labels))
         eval_progress.set_description(f"{split} | Average_Precision {round(ap.numpy(),4)}")
         aps.append(ap)
 

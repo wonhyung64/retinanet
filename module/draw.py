@@ -17,7 +17,7 @@ def draw_output(
         y1, x1, y2, x2 = tf.split(bbox, 4, axis=-1)
         label_index = int(final_labels[index])
         color = tuple(colors[label_index].numpy())
-        label_text = "{0} {1:0.3f}".format(labels.names[label_index], final_scores[index])
+        label_text = "{0} {1:0.3f}".format(labels[label_index], final_scores[index])
         draw.text((x1 + 4, y1 + 2), label_text, fill=color)
         draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
 
