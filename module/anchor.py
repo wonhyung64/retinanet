@@ -54,7 +54,7 @@ class AnchorBox:
                 tf.math.ceil(image_width / 2 ** i),
                 i,
             )
-            for i in range(3, 8)
+            for i in range(3, len(self._areas) + 3)
         ]
 
         return tf.concat(anchors, axis=0)
