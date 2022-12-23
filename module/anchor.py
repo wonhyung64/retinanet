@@ -11,8 +11,8 @@ class AnchorBox:
         self._strides = [2 ** i for i in range(3, 8)]
         # self._areas = [x ** 2 for x in [32.0, 64.0, 128.0, 256.0, 512.0]] # default
         # self._areas = [x ** 2 for x in [16.0, 32.0, 64.0, 128.0, 256.0]]
-        # self._areas = [x ** 2 for x in [8.0, 16.0, 32.0, 64.0, 128.0,]]
-        self._areas = [x ** 2 for x in [8., 24., 64., 196., 384.]]
+        self._areas = [x ** 2 for x in [8.0, 16.0, 32.0, 64.0, 128.0,]]
+        # self._areas = [x ** 2 for x in [8., 24., 64., 196., 384.]]
         self._anchor_dims = self._compute_dims()
 
 
