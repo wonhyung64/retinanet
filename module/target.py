@@ -46,7 +46,7 @@ class LabelEncoder:
         anchor_boxes = self._anchor_box.get_anchors(image_shape[1], image_shape[2])
         cls_ids = tf.cast(cls_ids, dtype=tf.float32)
         matched_gt_idx, positive_mask, ignore_mask = self._match_anchor_boxes(
-            anchor_boxes, gt_boxes, 0.7
+            anchor_boxes, gt_boxes, 0.6
         )
         matched_gt_boxes = tf.gather(gt_boxes, matched_gt_idx)
         box_target = self._compute_box_target(anchor_boxes, matched_gt_boxes)
