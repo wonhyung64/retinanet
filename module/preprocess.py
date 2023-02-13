@@ -43,17 +43,17 @@ def preprocess_train(sample):
     image_shape = [512, 512]
     image_shape = tf.cast(image_shape, dtype=tf.float32)
     image = tf.image.resize(image, tf.cast(image_shape, dtype=tf.int32))
-
-    bbox = tf.stack(
-        [
-            bbox[:, 0] * image_shape[1],
-            bbox[:, 1] * image_shape[0],
-            bbox[:, 2] * image_shape[1],
-            bbox[:, 3] * image_shape[0],
-        ],
-        axis=-1,
-    )
-    bbox = convert_to_xywh(bbox)
+    '''원래코드'''
+    # bbox = tf.stack(
+    #     [
+    #         bbox[:, 0] * image_shape[1],
+    #         bbox[:, 1] * image_shape[0],
+    #         bbox[:, 2] * image_shape[1],
+    #         bbox[:, 3] * image_shape[0],
+    #     ],
+    #     axis=-1,
+    # )
+    # bbox = convert_to_xywh(bbox)
 
     return image, bbox, class_id
 
