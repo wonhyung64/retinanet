@@ -35,7 +35,7 @@ args.batch_size = 1
 run = neptune.init(
     project=NEPTUNE_PROJECT,
     api_token=NEPTUNE_API_KEY,
-    run="MOD2-175"
+    run="MOD2-138"
 )
 
 datasets, labels, train_num, valid_num, test_num = load_dataset(args.name, args.data_dir)
@@ -47,7 +47,7 @@ experiment_dir = f"./model_weights/{model_name}"
 os.makedirs(experiment_dir, exist_ok=True)
 weights_dir = f"{experiment_dir}/{experiment_name}"
 
-# run["model"].download(f"{weights_dir}.h5")
+run["model"].download(f"{weights_dir}.h5")
 
 colors = tf.random.uniform((labels.num_classes, 4), maxval=256, dtype=tf.int32)
 
@@ -58,14 +58,15 @@ decoder = DecodePredictions(confidence_threshold=0.5)
 
 image_shape = tf.cast([512, 512], dtype=tf.float32)
 anchor_boxes = AnchorBox().get_anchors(image_shape[0], image_shape[1])
-path = "/Users/wonhyung64/data/diagnosis/retina"
+path = "/Users/wonhyung64/data/diagnosis/retina2"
+
 
 test_progress = tqdm(range(train_num))
 for step in test_progress:
     # for _ in range(30):
     #     next(test_set)
     image, gt_boxes, gt_labels = next(train_set)
-    if step <= 2870: continue
+    # if step <= 2870: continue
 
     predictions = model(image)
 
@@ -98,3 +99,5 @@ for step in test_progress:
 with open(f"{path}/sample{step}.json", encoding="UTF-8") as f:
     json_load = json.load(f)
 json_load = {k: np.asarray(json_load[k]) for k in json_load.keys()}
+
+# %%
